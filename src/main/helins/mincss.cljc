@@ -155,6 +155,18 @@
 
 
 
+(defn add-rule
+
+  ""
+
+  [ctx rule]
+
+  (update ctx
+          :rule+
+          conj
+          rule))
+
+
 
 (defn atomize-rule+
 
@@ -162,42 +174,45 @@
 
   [rule+ allow-list]
 
-  (reduce (fn [ctx [str-selector+ decl+ :as rule]]
-            (if-some [dotted-class-name (re-matches regex-magic-dotted-class
-                                                    str-selector+)]
-              (let [class-name (.substring ^String dotted-class-name
-                                           1)]
-                (if (contains? allow-list
-                               class-name)
-                  (update ctx
-                          :decl->class+
-                          (fn [decl->class+]
-                            (reduce #(update %1
-                                             %2
-                                             (fnil conj
-                                                   #{})
-                                             class-name)
-                                    decl->class+
-                                    decl+)))
-                  ctx))
-              (if-some [class-name+ (not-empty (into #{}
-                                                     (re-seq regex-magic-class
-                                                             str-selector+)))]
-                (if (= (count (filter allow-list
-                                      class-name+))
-                       (count class-name+))
+  (reduce (fn [ctx rule]
+            (if (vector? rule)
+              (let [[str-selector+
+                     decl+ ]       rule]
+                (if-some [dotted-class-name (re-matches regex-magic-dotted-class
+                                                        str-selector+)]
+                  (let [class-name (.substring ^String dotted-class-name
+                                               1)]
+                    (if (contains? allow-list
+                                   class-name)
+                      (update ctx
+                              :decl->class+
+                              (fn [decl->class+]
+                                (reduce #(update %1
+                                                 %2
+                                                 (fnil conj
+                                                       #{})
+                                                 class-name)
+                                        decl->class+
+                                        decl+)))
+                      ctx))
+                  (if-some [class-name+ (not-empty (into #{}
+                                                         (re-seq regex-magic-class
+                                                                 str-selector+)))]
+                    (if (= (count (filter allow-list
+                                          class-name+))
+                           (count class-name+))
 
-                  (update ctx
-                          :rule-complex+
-                          conj
-                          {:class-name+ class-name+
-                           :decl+       decl+
-                           :selector    str-selector+})
-                  ctx)
-                (update ctx
-                        :rule+
-                        conj
-                        rule))))
+                      (update ctx
+                              :rule-complex+
+                              conj
+                              {:class-name+ class-name+
+                               :decl+       decl+
+                               :selector    str-selector+})
+                      ctx)
+                    (add-rule ctx
+                              rule))))
+              (add-rule ctx
+                        rule)))
           {:decl->class+  {}
            :rule+         []
            :rule-complex+ []}
@@ -397,22 +412,28 @@
     (update ctx
             :rule+
             (fn [rule+]
-              (map (fn [[selector decl+ :as rule]]
-                     [selector
-                      (reduce-kv (fn [decl-2+ property value]
-                                   (assoc decl-2+
-                                          (cond->
-                                            property
-                                            (string? property)
-                                            (clojure.string/replace regex-magic-var
-                                                                    var->munged))
-                                          (cond->
-                                            value
-                                            (string? value)
-                                            (clojure.string/replace regex-magic-var
-                                                                    var->munged))))
-                                 {}
-                                 decl+)])
+              (map (fn [rule]
+                     (cond->
+                       rule
+                       (vector? rule)
+                       (do
+                         (let [[selector
+                                decl+]   rule]
+                           [selector
+                            (reduce-kv (fn [decl-2+ property value]
+                                         (assoc decl-2+
+                                                (cond->
+                                                  property
+                                                  (string? property)
+                                                  (clojure.string/replace regex-magic-var
+                                                                          var->munged))
+                                                (cond->
+                                                  value
+                                                  (string? value)
+                                                  (clojure.string/replace regex-magic-var
+                                                                          var->munged))))
+                                       {}
+                                       decl+)]))))
                    rule+)))
     ctx))
 
