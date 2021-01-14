@@ -15,10 +15,10 @@
 (comment
 
 
-  (mincss/defmagic foo)
+  (mincss/defclass foo)
 
 
-  (mincss/defmagic bar)
+  (mincss/defclass bar)
 
 
   (def style+
@@ -56,11 +56,11 @@
 
   (mincss/process! ["/home/adam/projects/clj/helins/mincss/dev/test.txt"]
                    [(mincss/rule (mincss/magic-class "ns"
-                                                     "var")
+                                               		 "var")
                                  {:background 'red
                                   :color      'black})
                     (mincss/rule (mincss/magic-class "ns"
-                                                     "var2")
+                                               		 "var2")
                                  {:background 'red
                                   :color      'white})])
 

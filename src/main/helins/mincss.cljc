@@ -25,6 +25,12 @@
 
 
 
+(def default-prefix
+
+  ""
+
+  "__HMC")
+
 
 (defn magic-class
 
@@ -51,13 +57,23 @@
 
 
 
-(def regex-magic
+(let [base-pattern (str magic-word-begin
+                  	    "\\S+?"
+                  	    magic-word-end)]
 
-  ""
+  (def regex-magic
 
-  (re-pattern (str magic-word-begin
-                   ".+?"
-                   magic-word-end)))
+	""
+
+	(re-pattern base-pattern))
+
+
+  (def regex-magic-class
+
+    ""
+	
+    (re-pattern (str "\\."
+					 base-pattern))))
 
 
 
@@ -71,13 +87,13 @@
    style])
 
 
-(defmacro defmagic
+(defmacro defclass
 
   ""
 
   ([sym]
 
-   `(defmagic ~sym
+   `(defclass ~sym
               nil))
 
 
@@ -87,7 +103,7 @@
            (when docstring
              [docstring])
            [(magic-class (str *ns*)
-                         (name sym))])))
+                   		 (name sym))])))
 
 
 
@@ -109,22 +125,24 @@
 
   [rule+ allow-list]
 
-  (reduce (fn [acc [css-class-name decl+ :as rule]]
-            (if-some [class-name (first (re-seq regex-magic
-                                                css-class-name))]
-              (if (contains? allow-list
-                             class-name)
-                (update acc
-                        :decl->class+
-                        (fn [decl->class+]
-                          (reduce #(update %1
-                                           %2
-                                           (fnil conj
-                                                 #{})
-                                           class-name)
-                                  decl->class+
-                                  decl+)))
-                acc)
+  (reduce (fn [acc [str-selector+ decl+ :as rule]]
+            (if-some [dotted-class-name (re-matches regex-magic-class
+                                                    str-selector+)]
+              (let [class-name (.substring ^String dotted-class-name
+                                           1)]
+                (if (contains? allow-list
+                               class-name)
+                  (update acc
+                          :decl->class+
+                          (fn [decl->class+]
+                            (reduce #(update %1
+                                             %2
+                                             (fnil conj
+                                                   #{})
+                                             class-name)
+                                    decl->class+
+                                    decl+)))
+                  acc))
               (update acc
                       :untouched
                       conj
@@ -167,7 +185,7 @@
   ([class+->style prefix seed]
 
    (let [prefix-2 (or prefix
-                      "__HMC")]
+                      default-prefix)]
      (reduce-kv (fn [acc class+ style]
                   (let [seed-2       (inc (acc :seed))
                         munged-class (str prefix-2
