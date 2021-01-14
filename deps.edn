@@ -15,7 +15,8 @@
 
   :dev
   {:extra-deps  {criterium {:mvn/version "0.4.5"}}
-   :extra-paths ["src/dev"]}
+   :extra-paths ["src/dev"]
+   :jvm-opts    ["-Dhelins.mincss.advanced=true"]}
 
   :jar
   {:extra-deps {seancorfield/depstar {:mvn/version "0.5.2"}}

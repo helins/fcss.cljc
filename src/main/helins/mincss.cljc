@@ -2,7 +2,8 @@
 
   ""
 
-  (:require [clojure.string])
+  (:require [clojure.string]
+            [helins.mincss.util :as mincss.util])
   #?(:cljs (:require-macros [helins.mincss])))
 
 
@@ -294,11 +295,22 @@
 
 
 
+(def advanced?
+
+  ""
+
+  (mincss.util/advanced?))
+
+
+
+
 #?(:clj
 
 
 
 (do
+
+
 
 
 (defn open-file+
