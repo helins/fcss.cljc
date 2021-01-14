@@ -362,21 +362,20 @@
 
   ""
 
-  ([sym]
+  [& sym+]
 
-   `(defclass ~sym
-              nil))
-
-
-  ([sym docstring]
-
-   (concat ['def sym]
-           (when docstring
-             [docstring])
-           [(magic-class (str *ns*)
-                   		 (name sym))])))
-
-
+  (let [str-ns (str *ns*)
+        def+   (map #(list 'def
+                           %
+                           (magic-class str-ns
+                                        (name %)))
+                    sym+)]
+    (println :def def+)
+    (if (= (count def+)
+           1)
+      (first def+)
+      `(do
+         ~@def+))))
 
 
 
