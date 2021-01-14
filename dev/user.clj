@@ -15,10 +15,10 @@
 (comment
 
 
-  (mincss/defclass foo)
+  (mincss/defmagic foo)
 
 
-  (mincss/defclass bar)
+  (mincss/defmagic bar)
 
 
   (def style+
