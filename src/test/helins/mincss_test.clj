@@ -64,13 +64,14 @@
 
 
 
-(def rule-complex-remaining
+(def rule-complex-nested
 
   ""
 
-  (mincss/rule (str (class-name+ 2)
-                    ":hover")
-               {:background 'red}))
+  (mincss/rule (str (class-name+ 0)
+                    ":active "
+                    (class-name+ 2))
+               {:background 'green}))
 
 
 
@@ -97,7 +98,7 @@
                          (mincss/rule (class-name+ 2)
                                       {:background 'black})
                          rule-complex
-                         rule-complex-remaining
+                         rule-complex-nested
                          rule-untouched]
                         allow-list))
 
@@ -107,9 +108,9 @@
 
 (t/deftest atomize-rule+
 
-  (let [{:keys [class->rule-complex+
-                decl->class+
-                rule+]}              ctx-atomize-rule+]
+  (let [{:keys [decl->class+
+                rule+
+                rule-complex+]} ctx-atomize-rule+]
     (t/is (= {[:background 'black] #{(class-name+ 0)
                                      (class-name+ 1)
                                      (class-name+ 2)}
@@ -118,9 +119,15 @@
               [:margin 0]          #{(class-name+ 0)}}
              decl->class+)
           "CSS declarations are atomized")
-    (t/is (= {(class-name+ 0) [rule-complex]
-              (class-name+ 2) [rule-complex-remaining]}
-             class->rule-complex+)
+    (t/is (= #{{:class-name+ #{(class-name+ 0)}
+                :decl+       (second rule-complex)
+                :selector    (first rule-complex)}
+               {:class-name+ #{(class-name+ 0)
+                               (class-name+ 2)}
+                :decl+       (second rule-complex-nested)
+                :selector    (first rule-complex-nested)}}
+             (into #{}
+                   rule-complex+))
           "Complex rules are detected")
     (t/is (= [[".untouched"
                {:color 'red}]]
@@ -161,8 +168,7 @@
 
 (t/deftest rename-class+
 
-  (let [{:keys [class->rule-complex+
-                original->munged+
+  (let [{:keys [original->munged+
                 rule+
                 seed]}               ctx-rename-class+]
     (t/is (= 3
@@ -177,15 +183,11 @@
                {:color 'white}
                {:color  'black
                 :margin 0}
-               (second rule-complex)
                (second rule-untouched)}
              (into #{}
                    (map second)
                    rule+))
-          "Declarations are regrouped in the rule collection")
-    (t/is (= 1
-             (count class->rule-complex+))
-          "One complex rule is remaining")))
+          "Declarations are regrouped in the rule collection")))
 
 
 
@@ -199,8 +201,9 @@
 
 (t/deftest process-complex
 
-  (t/is (empty? (ctx-process-complex :class->rule-complex+))
-        "Remaining complex rule was processed")
-  (t/is (= (inc (count (ctx-rename-class+ :rule+)))
+  (t/is (empty? (ctx-process-complex :rule-complex+))
+        "No more pending complex rules")
+  (t/is (= (+ (count (ctx-rename-class+ :rule+))
+              (count (ctx-rename-class+ :rule-complex+)))
            (count (ctx-process-complex :rule+)))
         "Complex rule is now ready"))

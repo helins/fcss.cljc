@@ -128,24 +128,27 @@
                                     decl->class+
                                     decl+)))
                   ctx))
-              (if-some [class-name-complex (first (re-seq regex-magic
-                                                          str-selector+))]
-                (if (contains? allow-list
-                               class-name-complex)
-                  (update-in ctx
-                             [:class->rule-complex+
-                              class-name-complex]
-                             (fnil conj
-                                   [])
-                             rule)
+              (if-some [class-name+ (not-empty (into #{}
+                                                     (re-seq regex-magic
+                                                             str-selector+)))]
+                (if (= (count (filter allow-list
+                                      class-name+))
+                       (count class-name+))
+
+                  (update ctx
+                          :rule-complex+
+                          conj
+                          {:class-name+ class-name+
+                           :decl+       decl+
+                           :selector    str-selector+})
                   ctx)
                 (update ctx
                         :rule+
                         conj
                         rule))))
-          {:class->rule-complex+ {}
-           :decl->class+         {}
-           :rule+                []}
+          {:decl->class+  {}
+           :rule+         []
+           :rule-complex+ []}
           rule+))
 
 
@@ -171,24 +174,7 @@
 
 
 
-(defn- -process-complex
 
-  ""
-
-  [ctx class-name class-name-munged rule-complex+]
-
-  (-> ctx
-      (update :class->rule-complex+
-              dissoc
-              class-name)
-      (update :rule+
-              into
-              (map (fn [[str-selector style]]
-                     [(clojure.string/replace str-selector
-                                              class-name
-                                              class-name-munged)
-                      style]))
-              rule-complex+)))
 
 
 
@@ -224,19 +210,17 @@
                                                seed-2))
                        unique-class     (when-not (next class+)
                                           (first class+))]
-                   (if (and unique-class
-                            (contains? (ctx-3 :class->rule-complex+)
-                                       unique-class))
-                     (-process-complex ctx-3
-                                       unique-class
-                                       munged-class
-                                       (get-in ctx-3
-                                               [:class->rule-complex+
-                                                unique-class]))
-                     ctx-3)))
+                   (cond->
+                     ctx-3
+                     unique-class
+                     (update :class->unique-munged
+                             assoc
+                             unique-class
+                             munged-class))))
                (-> ctx
-                   (assoc :original->munged+ {}
-                          :prefix            prefix-2)
+                   (assoc :class->unique-munged {}
+                          :original->munged+    {}
+                          :prefix               prefix-2)
 
                    (update :seed
                            #(or %
@@ -245,33 +229,85 @@
 
 
 
+(defn- -process-complex
+
+  ""
+
+  [ctx class-name class-name-munged rule-complex+]
+
+  (-> ctx
+      (update :class->rule-complex+
+              dissoc
+              class-name)
+      (update :rule+
+              into
+              (map (fn [[str-selector style]]
+                     [(clojure.string/replace str-selector
+                                              class-name
+                                              class-name-munged)
+                      style]))
+              rule-complex+)))
+
+
+
+
+(defn ensure-unique
+
+  ""
+
+  [ctx class-name]
+
+  (let [path-unique  [:class->unique-munged
+                      class-name]]
+    (if (get-in ctx
+                path-unique)
+      ctx
+      (let [seed-2       (inc (ctx :seed))
+            munged-class (str (ctx :prefix)
+                              seed-2)]
+        (-> ctx
+            (assoc :seed
+                   seed-2)
+            (update-in [:original->munged+
+                        class-name]
+                       (fnil conj
+                             [])
+                       munged-class)
+            (assoc-in path-unique
+                      munged-class))))))
+
+
+
 (defn process-complex
 
   ""
 
   [{:as   ctx
-    :keys [class->rule-complex+]}]
+    :keys [rule-complex+]}]
 
-  (if (seq class->rule-complex+)
-    (let [{:keys [prefix]} ctx]
-      (reduce-kv (fn [ctx-2 class-name rule-complex+]
-                   (let [seed-2       (inc (ctx-2 :seed))
-                         munged-class (str prefix
-                                           seed-2)]
-                     (-> ctx-2
-                         (assoc :seed
-                                seed-2)
-                         (-process-complex class-name
-                                           (str prefix
-                                                seed-2)
-                                           rule-complex+)
-                         (update-in [:original->munged+
-                                     class-name]
-                                    conj
-                                    munged-class))))
-                 ctx
-                 class->rule-complex+))
-    ctx))
+  (reduce (fn [ctx-2 {:keys [class-name+
+                             decl+
+                             selector]}]
+            (let [ctx-3 (reduce ensure-unique
+                                ctx-2
+                                class-name+)
+                  selector-2 (reduce (fn [selector-2 [class-name munged]]
+                                       (clojure.string/replace selector-2
+                                                               class-name
+                                                               munged))
+                                     selector
+                                     (map (juxt identity
+                                                (ctx-3 :class->unique-munged))
+                                          class-name+))
+                  ]
+              (update ctx-3
+                      :rule+
+                      conj
+                      [selector-2
+                       decl+])))
+          (dissoc ctx
+                  :rule-complex+)
+          rule-complex+))
 
 
 
