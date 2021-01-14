@@ -54,7 +54,36 @@
 
 
 
-(def ret-atomize-rule+
+(def rule-complex
+
+  ""
+
+  (mincss/rule (str (class-name+ 0)
+                    ":hover")
+               {:background 'red}))
+
+
+
+(def rule-complex-remaining
+
+  ""
+
+  (mincss/rule (str (class-name+ 2)
+                    ":hover")
+               {:background 'red}))
+
+
+
+(def rule-untouched
+
+  ""
+
+  (mincss/rule "untouched"
+               {:color 'red}))
+
+
+
+(def ctx-atomize-rule+
 
   ""
 
@@ -65,8 +94,11 @@
                          (mincss/rule (class-name+ 1)
                                       {:background 'black
                                        :color      'white})
-                         (mincss/rule "untouched"
-                                      {:color 'red})]
+                         (mincss/rule (class-name+ 2)
+                                      {:background 'black})
+                         rule-complex
+                         rule-complex-remaining
+                         rule-untouched]
                         allow-list))
 
 
@@ -75,54 +107,67 @@
 
 (t/deftest atomize-rule+
 
-  (let [{:keys [decl->class+
-                untouched]}  ret-atomize-rule+]
+  (let [{:keys [class->rule-complex+
+                decl->class+
+                rule+]}              ctx-atomize-rule+]
     (t/is (= {[:background 'black] #{(class-name+ 0)
-                                     (class-name+ 1)}
+                                     (class-name+ 1)
+                                     (class-name+ 2)}
               [:color 'black]      #{(class-name+ 0)}
               [:color 'white]      #{(class-name+ 1)}
               [:margin 0]          #{(class-name+ 0)}}
-             decl->class+))
+             decl->class+)
+          "CSS declarations are atomized")
+    (t/is (= {(class-name+ 0) [rule-complex]
+              (class-name+ 2) [rule-complex-remaining]}
+             class->rule-complex+)
+          "Complex rules are detected")
     (t/is (= [[".untouched"
                {:color 'red}]]
-             untouched))))
+             rule+)
+          "Rules not involving magic classes are detected")))
 
 
 
-(def class+->style
+(def ctx-group-decl+
 
   ""
 
-  (mincss/group-decl+ (ret-atomize-rule+ :decl->class+)))
+  (mincss/group-decl+ ctx-atomize-rule+))
 
 
 
 (t/deftest group-decl+
 
-  (t/is (= {#{(class-name+ 0)} {:color  'black
-                                :margin 0}
-            #{(class-name+ 1)} {:color 'white}
-            #{(class-name+ 0)
-              (class-name+ 1)} {:background 'black}}
-           class+->style)))
+  (t/is (= (assoc ctx-group-decl+
+                  :class+->style
+                  {#{(class-name+ 0)} {:color  'black
+                                       :margin 0}
+                   #{(class-name+ 1)} {:color 'white}
+                   #{(class-name+ 0)
+                     (class-name+ 1)
+                     (class-name+ 2)} {:background 'black}})
+           ctx-group-decl+)))
+
+
+
+(def ctx-rename-class+
+
+  ""
+
+  (mincss/rename-class+ ctx-group-decl+))
 
 
 
 (t/deftest rename-class+
 
-  (let [{:keys [original->munged+
+  (let [{:keys [class->rule-complex+
+                original->munged+
                 rule+
-                seed]}            (mincss/rename-class+ class+->style
-                                                        0)
-        ]
+                seed]}               ctx-rename-class+]
     (t/is (= 3
              seed)
           "3 munged classes are created")
-    (t/is (every? #(= %
-                      2)
-                  (map count
-                       (vals original->munged+)))
-          "Each original class should have one munged name for itself and one for a common class")
     (t/is (= 1
              (count (apply clojure.set/intersection
                            (map set
@@ -131,10 +176,31 @@
     (t/is (= #{{:background 'black}
                {:color 'white}
                {:color  'black
-                :margin 0}}
+                :margin 0}
+               (second rule-complex)
+               (second rule-untouched)}
              (into #{}
                    (map second)
                    rule+))
-          "Declarations are regrouped as they were")
-    )
-  )
+          "Declarations are regrouped in the rule collection")
+    (t/is (= 1
+             (count class->rule-complex+))
+          "One complex rule is remaining")))
+
+
+
+(def ctx-process-complex
+
+  ""
+
+  (mincss/process-complex ctx-rename-class+))
+
+
+
+(t/deftest process-complex
+
+  (t/is (empty? (ctx-process-complex :class->rule-complex+))
+        "Remaining complex rule was processed")
+  (t/is (= (inc (count (ctx-rename-class+ :rule+)))
+           (count (ctx-process-complex :rule+)))
+        "Complex rule is now ready"))
