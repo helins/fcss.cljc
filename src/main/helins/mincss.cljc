@@ -10,6 +10,16 @@
 ;;;;;;;;;;
 
 
+
+
+#?(:clj
+
+
+
+(do
+
+
+
 (def magic-word-begin
 
   ""
@@ -304,11 +314,6 @@
 
 
 
-#?(:clj
-
-
-
-(do
 
 
 
@@ -352,25 +357,30 @@
 
   [path+ rule+]
 
-  (let [opened-file+              (open-file+ path+)
-        {:as   ctx
-         :keys [original->munged+
-                rule+]}           (-> (atomize-rule+ rule+
-                                                     (into #{}
-                                                           (mapcat :class-name+
-                                                                    (vals opened-file+))))
-                                      group-decl+
-                                      rename-class+
-                                      process-complex)]
-    (write-file+ opened-file+
-                 (into {}
-                       (map #(update %
-                                     1
-                                     (fn [munged+]
-                                       (clojure.string/join " "
-                                                            munged+))))
-                       original->munged+))
-    ctx))
+  (if advanced?
+    (let [opened-file+              (open-file+ path+)
+          _ (println :allow (into #{}
+                                                             (mapcat :class-name+
+                                                                     (vals opened-file+))))
+          {:as   ctx
+           :keys [original->munged+
+                  rule+]}           (-> (atomize-rule+ rule+
+                                                       (into #{}
+                                                             (mapcat :class-name+
+                                                                     (vals opened-file+))))
+                                        group-decl+
+                                        rename-class+
+                                        process-complex)]
+      (write-file+ opened-file+
+                   (into {}
+                         (map #(update %
+                                       1
+                                       (fn [munged+]
+                                         (clojure.string/join " "
+                                                              munged+))))
+                         original->munged+))
+      ctx)
+    {:rule+ rule+}))
 
 
 
