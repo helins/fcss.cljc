@@ -39,7 +39,9 @@
   [str-namespace str-sym]
 
   (str magic-word-begin
-       str-namespace
+       (clojure.string/replace str-namespace
+                               "."
+                               "__")
        "__"
        str-sym
        magic-word-end))
