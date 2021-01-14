@@ -43,6 +43,22 @@
         "Variadic"))
 
 
+(t/deftest rule
+
+  (t/is (= [".class"
+            {:color 'red}]
+           (mincss/rule "class"
+                        {:color 'red}))
+        "With a class name")
+  (t/is (= [".class-1:hover .class-2"
+            {:color 'red}]
+           (mincss/rule "$1:hover $2"
+                        {:$1 "class-1"
+                         :$2 "class-2"}
+                        {:color 'red}))
+        "With placeholders"))
+
+
 
 (t/deftest regex+
 

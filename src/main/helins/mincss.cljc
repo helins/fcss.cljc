@@ -94,10 +94,16 @@
 
   ""
 
-  [class-name style]
+  ([class-name style]
 
-  [(sel class-name)
-   style])
+   [(sel class-name)
+    style])
+
+  ([selector placeholder->class-name style]
+
+   [(sel selector
+         placeholder->class-name)
+    style]))
 
 
 
