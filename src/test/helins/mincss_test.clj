@@ -30,6 +30,19 @@
 
 
 
+(t/deftest sel
+
+  (t/is (= ".class"
+           (mincss/sel "class"))
+        "Arity 1")
+  (t/is (= ".class-1:hover .class-2.class-3"
+           (mincss/sel "$$1:hover $$2$$3"
+                       {:$$1  "class-1"
+                        '$$2  "class-2"
+                        "$$3" "class-3"}))
+        "Variadic"))
+
+
 
 (t/deftest regex+
 
@@ -37,7 +50,7 @@
                              (class-name+ 0)))
         "Matches class name")
   (t/is (boolean (re-matches mincss/regex-magic-class
-                             (mincss/dotted (class-name+ 0))))
+                             (mincss/sel (class-name+ 0))))
         "Matches dotted class name"))
 
 

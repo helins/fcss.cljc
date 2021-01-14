@@ -47,15 +47,27 @@
 
 
 
-(defn dotted
+(defn sel
 
   ""
 
-  [class-name]
+  ([class-name]
 
-  (str \.
-       class-name))
+   (str \.
+        class-name))
 
+
+  ([selector placeholder->class-name]
+
+   (reduce-kv (fn [selector-2 placeholder class-name]
+                (clojure.string/replace selector-2
+                                        (cond
+                                          (keyword? placeholder) (name placeholder)
+                                          (string? placeholder)  placeholder
+                                          (symbol? placeholder)  (str placeholder))
+                                        (sel class-name)))
+              selector
+              placeholder->class-name)))
 
 
 (let [base-pattern (str magic-word-begin
@@ -84,7 +96,7 @@
 
   [class-name style]
 
-  [(dotted class-name)
+  [(sel class-name)
    style])
 
 
@@ -204,7 +216,7 @@
                                                           class+)))
                                         (update :rule+
                                                 conj
-                                                [(dotted munged-class)
+                                                [(sel munged-class)
                                                  style])
                                         (assoc :seed
                                                seed-2))
@@ -357,6 +369,8 @@
              [docstring])
            [(magic-class (str *ns*)
                    		 (name sym))])))
+
+
 
 
 
