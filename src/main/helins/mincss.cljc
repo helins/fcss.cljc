@@ -43,19 +43,7 @@
   "__HMC")
 
 
-(defn magic-class
 
-  ""
-
-  [str-namespace str-sym]
-
-  (str magic-word-begin
-       (clojure.string/replace str-namespace
-                               "."
-                               "__")
-       "__"
-       str-sym
-       magic-word-end))
 
 
 
@@ -100,23 +88,7 @@
    style])
 
 
-(defmacro defclass
 
-  ""
-
-  ([sym]
-
-   `(defclass ~sym
-              nil))
-
-
-  ([sym docstring]
-
-   (concat ['def sym]
-           (when docstring
-             [docstring])
-           [(magic-class (str *ns*)
-                   		 (name sym))])))
 
 
 
@@ -313,6 +285,42 @@
 
 
 
+(defn magic-class
+
+  ""
+
+  [str-namespace str-sym]
+
+  (let [class-name (str (clojure.string/replace str-namespace
+                                                "."
+                                                "__")
+                        "__"
+                        str-sym)]
+    (if advanced?
+      (str magic-word-begin
+           class-name
+           magic-word-end)
+      class-name)))
+
+
+
+(defmacro defclass
+
+  ""
+
+  ([sym]
+
+   `(defclass ~sym
+              nil))
+
+
+  ([sym docstring]
+
+   (concat ['def sym]
+           (when docstring
+             [docstring])
+           [(magic-class (str *ns*)
+                   		 (name sym))])))
 
 
 
@@ -359,9 +367,6 @@
 
   (if advanced?
     (let [opened-file+              (open-file+ path+)
-          _ (println :allow (into #{}
-                                                             (mapcat :class-name+
-                                                                     (vals opened-file+))))
           {:as   ctx
            :keys [original->munged+
                   rule+]}           (-> (atomize-rule+ rule+
