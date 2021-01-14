@@ -123,6 +123,16 @@
 
 
 
+(defn css-var?
+
+  ""
+
+  [string]
+
+  (clojure.string/starts-with? string
+                               "--"))
+
+
 
 
 (defn str->magic+
@@ -133,8 +143,7 @@
 
   (reduce (fn [acc magic-name]
             (update acc
-                    (if (clojure.string/starts-with? magic-name
-                                                     "--")
+                    (if (css-var? magic-name)
                       :var+
                       :class+)
                     conj
@@ -503,17 +512,24 @@
 
   ""
 
-  [opened-file+ original->munged-str]
+  [opened-file+ {:keys [original->munged+
+                        var->munged]}]
   
-  (run! (fn [[path {:keys [content
-                           class+]}]]
-          (spit path
-                (reduce #(clojure.string/replace %1
-                                                 %2
-                                                 (original->munged-str %2))
-                        content
-                        class+)))
-        opened-file+))
+  (let [class->munged (into {}
+                            (for [[class-name munged+] original->munged+]
+                              [class-name
+                               (clojure.string/join " "
+                                                    munged+)]))]
+    (run! (fn [[path {:keys [content]}]]
+            (spit path
+                  (clojure.string/replace content
+                                          regex-magic
+                                          (fn [magic-name]
+                                            ((if (css-var? magic-name)
+                                               var->munged
+                                               class->munged)
+                                             magic-name)))))
+          opened-file+)))
 
 
 
@@ -539,13 +555,7 @@
                                                                   (vals opened-file+))))
                                         rename-var+)]
       (write-file+ opened-file+
-                   (into {}
-                         (map #(update %
-                                       1
-                                       (fn [munged+]
-                                         (clojure.string/join " "
-                                                              munged+))))
-                         original->munged+))
+                   ctx)
       ctx)
     {:rule+ rule+}))
 
