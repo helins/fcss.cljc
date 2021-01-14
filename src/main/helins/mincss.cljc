@@ -45,6 +45,17 @@
 
 
 
+(defn- -to-string
+
+  ""
+
+  [x]
+  (cond
+    (keyword? x) (name x)
+    (string? x)  x
+    (symbol? x)  (str x)))
+
+
 
 
 (defn sel
@@ -59,15 +70,26 @@
 
   ([selector placeholder->class-name]
 
-   (reduce-kv (fn [selector-2 placeholder class-name]
-                (clojure.string/replace selector-2
-                                        (cond
-                                          (keyword? placeholder) (name placeholder)
-                                          (string? placeholder)  placeholder
-                                          (symbol? placeholder)  (str placeholder))
-                                        (sel class-name)))
+   (reduce-kv #(clojure.string/replace %1
+                                       (-to-string %2)
+                                       (sel %3))
               selector
               placeholder->class-name)))
+
+
+
+(defn sub
+
+  ""
+
+  [string placeholder->string]
+
+  (reduce-kv #(clojure.string/replace %1
+                                      (-to-string %2)
+                                      %3)
+             string
+             placeholder->string))
+
 
 
 (let [base-pattern (str magic-word-begin
