@@ -14,9 +14,9 @@
 
   ""
 
-  (mapv #(mincss/magic-class "ns"
-                             (str "var"
-                                  %))
+  (mapv #(mincss/magic "ns"
+                       (str "var"
+                            %))
         (range 4)))
 
 
@@ -64,22 +64,34 @@
 
   (t/is (boolean (re-matches mincss/regex-magic
                              (class-name+ 0)))
-        "Matches class name")
+        "Can match class")
+  (t/is (boolean (re-matches mincss/regex-magic
+                             (str "--"
+                                  (class-name+ 0))))
+        "Can match var")
   (t/is (boolean (re-matches mincss/regex-magic-class
+                             (class-name+ 0)))
+        "Matches class name")
+  (t/is (boolean (re-matches mincss/regex-magic-dotted-class
                              (mincss/sel (class-name+ 0))))
         "Matches dotted class name"))
 
 
 
-(t/deftest str->class-name+
+(t/deftest str->magic
 
-  (t/is (= #{(class-name+ 0)
-             (class-name+ 1)}
-           (mincss/str->class-name+ (str "fldksjflskdjf"
-                                         (class-name+ 0)
-                                         "sldfkjsdlfksjkl"
-                                         (class-name+ 1)
-                                         "lmklfk,l")))))
+  (t/is (= {:class+ #{(class-name+ 0)
+                      (class-name+ 1)}
+            :var+   #{(str "--"
+                           (class-name+ 2))}}
+           (mincss/str->magic+ (str "fldksjflskdjf"
+                                    (class-name+ 0)
+                                    "sldfkjsdlfksjkl"
+                                    (class-name+ 1)
+                                    "lmklfk,l"
+                                    "--"
+                                    (class-name+ 2)
+                                    "lfdkslfkj")))))
 
 
 
@@ -236,3 +248,37 @@
               (count (ctx-rename-class+ :rule-complex+)))
            (count (ctx-process-complex :rule+)))
         "Complex rule is now ready"))
+
+
+
+(t/deftest munge-var+
+
+  (t/is (= {:prefix      "P"
+            :seed        2
+            :var->munged {"a" "--P1"
+                          "b" "--P2"}}
+           (mincss/munge-var+ {:prefix "P"
+                               :seed   0}
+                              ["a" "b"]))))
+
+
+
+(mincss/defvar var-1
+               var-2)
+
+
+
+(t/deftest rename-var+
+
+  (t/is (= [["selector"
+             {:background "var( --v1, red)"
+              :color      'red
+              "--v2"      'green}]]
+           (-> (mincss/rename-var+ {:rule+       [["selector"
+                                                   {:background (format "var( %s, red)"
+                                                                        var-1)
+                                                    :color      'red
+                                                    var-2       'green}]]
+                                    :var->munged {var-1 "--v1"
+                                                  var-2 "--v2"}})
+               :rule+))))

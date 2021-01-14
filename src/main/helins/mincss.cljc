@@ -76,12 +76,27 @@
 
   (def regex-magic
 
+    ""
+
+    (re-pattern (str "(?:--)?"
+                     base-pattern)))
+
+  (def regex-magic-class
+
 	""
 
 	(re-pattern base-pattern))
 
 
-  (def regex-magic-class
+  (def regex-magic-var
+
+    ""
+
+    (re-pattern (str "--"
+                     base-pattern)))
+
+
+  (def regex-magic-dotted-class
 
     ""
 	
@@ -110,15 +125,25 @@
 
 
 
-(defn str->class-name+
+(defn str->magic+
 
   ""
 
   [string]
 
-  (into #{}
-        (re-seq regex-magic
-                string)))
+  (reduce (fn [acc magic-name]
+            (update acc
+                    (if (clojure.string/starts-with? magic-name
+                                                     "--")
+                      :var+
+                      :class+)
+                    conj
+                    magic-name))
+          {:class+ #{}
+           :var+   #{}}
+          (re-seq regex-magic
+                  string)))
+
 
 
 
@@ -129,7 +154,7 @@
   [rule+ allow-list]
 
   (reduce (fn [ctx [str-selector+ decl+ :as rule]]
-            (if-some [dotted-class-name (re-matches regex-magic-class
+            (if-some [dotted-class-name (re-matches regex-magic-dotted-class
                                                     str-selector+)]
               (let [class-name (.substring ^String dotted-class-name
                                            1)]
@@ -147,7 +172,7 @@
                                     decl+)))
                   ctx))
               (if-some [class-name+ (not-empty (into #{}
-                                                     (re-seq regex-magic
+                                                     (re-seq regex-magic-class
                                                              str-selector+)))]
                 (if (= (count (filter allow-list
                                       class-name+))
@@ -329,6 +354,62 @@
 
 
 
+(defn munge-var+
+
+  ""
+
+  [ctx var+]
+
+  (let [{:keys [prefix]} ctx]
+    (reduce (fn [ctx-2 magic-var]
+              (let [seed-2 (inc (ctx-2 :seed))]
+                (-> ctx-2
+                    (assoc :seed
+                           seed-2)
+                    (update :var->munged
+                            assoc
+                            magic-var
+                            (str "--"
+                                 prefix
+                                 seed-2)))))
+            ctx
+            var+)))
+
+
+
+(defn rename-var+
+
+  ""
+
+  [{:as   ctx
+    :keys [var->munged]}]
+
+  (if (seq var->munged)
+    (update ctx
+            :rule+
+            (fn [rule+]
+              (map (fn [[selector decl+ :as rule]]
+                     [selector
+                      (reduce-kv (fn [decl-2+ property value]
+                                   (assoc decl-2+
+                                          (cond->
+                                            property
+                                            (string? property)
+                                            (clojure.string/replace regex-magic-var
+                                                                    var->munged))
+                                          (cond->
+                                            value
+                                            (string? value)
+                                            (clojure.string/replace regex-magic-var
+                                                                    var->munged))))
+                                 {}
+                                 decl+)])
+                   rule+)))
+    ctx))
+
+
+
+
 
 
 (def advanced?
@@ -339,7 +420,7 @@
 
 
 
-(defn magic-class
+(defn magic
 
   ""
 
@@ -358,19 +439,20 @@
 
 
 
-(defmacro defclass
 
-  ""
+(defn- -defname
 
-  [& sym+]
+  ;;
+
+  [sym+ prefix]
 
   (let [str-ns (str *ns*)
         def+   (map #(list 'def
                            %
-                           (magic-class str-ns
-                                        (name %)))
+                           (str prefix
+                                (magic str-ns
+                                       (name %))))
                     sym+)]
-    (println :def def+)
     (if (= (count def+)
            1)
       (first def+)
@@ -378,6 +460,26 @@
          ~@def+))))
 
 
+
+(defmacro defclass
+
+  ""
+
+  [& sym+]
+
+  (-defname sym+
+            nil))
+
+
+
+(defmacro defvar
+
+  ""
+
+  [& sym+]
+
+  (-defname sym+
+            "--"))
 
 
 
@@ -391,8 +493,9 @@
         (for [path path+]
           (let [content (slurp path)]
             [path
-             {:content     content
-              :class-name+ (str->class-name+ content)}]))))
+             (assoc (str->magic+ content)
+                    :content
+                    content)]))))
 
 
 
@@ -403,13 +506,13 @@
   [opened-file+ original->munged-str]
   
   (run! (fn [[path {:keys [content
-                           class-name+]}]]
+                           class+]}]]
           (spit path
                 (reduce #(clojure.string/replace %1
                                                  %2
                                                  (original->munged-str %2))
                         content
-                        class-name+)))
+                        class+)))
         opened-file+))
 
 
@@ -426,11 +529,15 @@
            :keys [original->munged+
                   rule+]}           (-> (atomize-rule+ rule+
                                                        (into #{}
-                                                             (mapcat :class-name+
+                                                             (mapcat :class+
                                                                      (vals opened-file+))))
                                         group-decl+
                                         rename-class+
-                                        process-complex)]
+                                        process-complex
+                                        (munge-var+ (into #{}
+                                                          (mapcat :var+
+                                                                  (vals opened-file+))))
+                                        rename-var+)]
       (write-file+ opened-file+
                    (into {}
                          (map #(update %
@@ -441,6 +548,7 @@
                          original->munged+))
       ctx)
     {:rule+ rule+}))
+
 
 
 
