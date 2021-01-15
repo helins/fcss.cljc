@@ -15,11 +15,6 @@
 (comment
 
 
-  (mincss/defclass foo
-                   bar)
-
-
-  (mincss/defvar vouf)
 
 
 

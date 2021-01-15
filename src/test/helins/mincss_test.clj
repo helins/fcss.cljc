@@ -263,8 +263,8 @@
 
 
 
-(mincss/defvar var-1
-               var-2)
+(mincss/defvar var-1)
+(mincss/defvar var-2)
 
 
 

@@ -496,20 +496,14 @@
 
   ;;
 
-  [sym+ prefix]
+  [sym docstring prefix]
 
-  (let [str-ns (str *ns*)
-        def+   (map #(list 'def
-                           %
-                           (str prefix
-                                (magic str-ns
-                                       (name %))))
-                    sym+)]
-    (if (= (count def+)
-           1)
-      (first def+)
-      `(do
-         ~@def+))))
+  (concat `(def ~sym)
+          (when docstring
+            [docstring])
+          (list (str prefix
+                     (magic (str *ns*)
+                            (name sym))))))
 
 
 
@@ -517,10 +511,18 @@
 
   ""
 
-  [& sym+]
+  ([sym]
 
-  (-defname sym+
-            nil))
+   (-defname sym
+             nil
+             nil))
+
+
+  ([sym docstring]
+
+   (-defname sym
+             docstring
+             nil)))
 
 
 
@@ -528,10 +530,18 @@
 
   ""
 
-  [& sym+]
+  ([sym]
 
-  (-defname sym+
-            "--"))
+   (-defname sym
+             nil
+             "--"))
+
+
+  ([sym docstring]
+
+   (-defname sym
+             docstring
+             "--")))
 
 
 
