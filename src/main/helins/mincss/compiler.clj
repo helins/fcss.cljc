@@ -2,9 +2,8 @@
 
   ""
 
-  (:require [clojure.string]
-            [helins.mincss.util :as mincss.util]))
-
+  (:require [cljs.env]
+            [clojure.string]))
 
 ;;;;;;;;;;
 
@@ -397,14 +396,6 @@
 
 
 
-(def advanced?
-
-  ""
-
-  (mincss.util/advanced?))
-
-
-
 (defn magic
 
   ""
@@ -416,11 +407,15 @@
                                                 "__")
                         "__"
                         str-sym)]
-    (if advanced?
+    (if (and cljs.env/*compiler*
+             (not (identical? (get-in @cljs.env/*compiler*
+                                      [:options
+                                       :optimizations])
+                              :advanced)))
+      class-name
       (str magic-word-begin
            class-name
-           magic-word-end)
-      class-name)))
+           magic-word-end))))
 
 
 
@@ -475,22 +470,20 @@
 
   [path+ rule+]
 
-  (if advanced?
-    (let [opened-file+              (open-file+ path+)
-          {:as   ctx
-           :keys [original->munged+
-                  rule+]}           (-> (atomize-rule+ rule+
-                                                       (into #{}
-                                                             (mapcat :class+
-                                                                     (vals opened-file+))))
-                                        group-decl+
-                                        rename-class+
-                                        process-complex
-                                        (munge-var+ (into #{}
-                                                          (mapcat :var+
-                                                                  (vals opened-file+))))
-                                        rename-var+)]
-      (write-file+ opened-file+
-                   ctx)
-      ctx)
-    {:rule+ rule+}))
+  (let [opened-file+              (open-file+ path+)
+        {:as   ctx
+         :keys [original->munged+
+                rule+]}           (-> (atomize-rule+ rule+
+                                                     (into #{}
+                                                           (mapcat :class+
+                                                                   (vals opened-file+))))
+                                      group-decl+
+                                      rename-class+
+                                      process-complex
+                                      (munge-var+ (into #{}
+                                                        (mapcat :var+
+                                                                (vals opened-file+))))
+                                      rename-var+)]
+    (write-file+ opened-file+
+                 ctx)
+    ctx))

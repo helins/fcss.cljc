@@ -2,8 +2,7 @@
 
   ""
 
-  (:require [clojure.set]
-            [clojure.test  :as t]
+  (:require [clojure.test  :as t]
             [helins.mincss :as mincss]))
 
 

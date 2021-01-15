@@ -11,10 +11,16 @@
 ;;;;;;;;;;
 
 
+(mincss/defvar bg)
+
+
+
 (def rule+
 
   [["body"
-    {:background 'red}]])
+    {:background (mincss/sub "var( $$ )"
+                             {:$$ bg})
+     bg          'blue}]])
 
 
 
@@ -30,5 +36,6 @@
 
 (comment
 
+  (mincss/defclass foo)
 
   )
