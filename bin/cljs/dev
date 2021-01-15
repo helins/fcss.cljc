@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+
+clj -A:cljs:dev watch dev

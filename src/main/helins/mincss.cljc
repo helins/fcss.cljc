@@ -615,4 +615,53 @@
 
 
 
+
+
+(def ^:private -*rule+
+
+  ;;
+
+  (atom {}))
+
+
+
+
+
+
+))
+
+
+
+
+
+
+#?(:cljs (do
+
+
+
+(let [v*element (volatile! nil)]
+
+  (defn global-style! 
+
+    ""
+
+    [css-string]
+
+    (some->> @v*element
+             (.removeChild js/document.head))
+    (.appendChild js/document.head
+                  (let [element (js/document.createElement "style")]
+                    (set! (.-id element)
+                          "helins-mincss--global-styles")
+                    (set! (.-innerHTML element)
+                          css-string)
+                    (vreset! v*element
+                             element)
+                    element))
+    nil))
+
+
+
+
+
 ))
