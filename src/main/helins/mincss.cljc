@@ -3,6 +3,7 @@
   ""
 
   (:require [clojure.string]
+            [garden.core                    :as garden]
             [garden.types                   :as garden.type]
             #?(:clj [helins.mincss.compiler :as mincss.compiler]))
   #?(:cljs (:require-macros [helins.mincss])))
@@ -103,8 +104,8 @@
   [string-name frame+]
 
   (garden.type/->CSSAtRule :keyframes
-                          {:frames     frame+
-                           :identifier string-name}))
+                           {:frames     frame+
+                            :identifier string-name}))
 
 
 
@@ -219,6 +220,8 @@
   (delay
     (let [element (js/document.createElement "link")
           v*url   (volatile! nil)]
+      (set! (.-id element)
+            "helins-mincss--stylesheet")
       (set! (.-rel element)
             "stylesheet")
       (.appendChild js/document.head
@@ -252,6 +255,15 @@
 
 
 
+
+(defn on-load!
+
+  ""
+
+  [rule+]
+
+  (when goog.DEBUG
+    (global-style! (garden/css rule+))))
 
 
 ))

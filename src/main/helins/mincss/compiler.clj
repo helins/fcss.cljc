@@ -3,7 +3,9 @@
   ""
 
   (:require [cljs.env]
-            [clojure.string]))
+            [clojure.string]
+            [garden.core     :as garden]))
+
 
 ;;;;;;;;;;
 
@@ -355,44 +357,38 @@
 
 
 
+
+(defn compile-rule+
+
+  ""
+
+  [{:as   ctx
+    :keys [rule+]}]
+
+  (assoc ctx
+         :output
+         (garden/css rule+)))
+
+
+
 (defn rename-var+
 
   ""
 
   [{:as   ctx
-    :keys [var->munged]}]
+    :keys [output
+           var->munged]}]
 
-  (if (seq var->munged)
-    (update ctx
-            :rule+
-            (fn [rule+]
-              (map (fn [rule]
-                     (cond->
-                       rule
-                       (vector? rule)
-                       (do
-                         (let [[selector
-                                decl+]   rule]
-                           [selector
-                            (reduce-kv (fn [decl-2+ property value]
-                                         (assoc decl-2+
-                                                (cond->
-                                                  property
-                                                  (string? property)
-                                                  (clojure.string/replace regex-magic-var
-                                                                          var->munged))
-                                                (cond->
-                                                  value
-                                                  (string? value)
-                                                  (clojure.string/replace regex-magic-var
-                                                                          var->munged))))
-                                       {}
-                                       decl+)]))))
-                   rule+)))
-    ctx))
-
-
-
+  (cond->
+    ctx
+    (seq var->munged)
+    (update :output
+            #(clojure.string/replace %1
+                                     regex-magic-var
+                                     (fn [magic-var]
+                                       (get var->munged
+                                            magic-var
+                                            magic-var))))))
 
 
 
@@ -483,6 +479,7 @@
                                       (munge-var+ (into #{}
                                                         (mapcat :var+
                                                                 (vals opened-file+))))
+                                      compile-rule+
                                       rename-var+)]
     (write-file+ opened-file+
                  ctx)

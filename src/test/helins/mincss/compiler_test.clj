@@ -239,7 +239,7 @@
 
 
 
-(t/deftest rename-var+
+#_(t/deftest rename-var+
 
   (t/is (= [["selector"
              {:background "var( --v1, red)"
