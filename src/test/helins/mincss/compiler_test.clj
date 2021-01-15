@@ -1,10 +1,11 @@
-(ns helins.mincss-test
+(ns helins.mincss.compiler-test
 
   ""
 
   (:require [clojure.set]
-            [clojure.test  :as t]
-            [helins.mincss :as mincss]))
+            [clojure.test           :as t]
+            [helins.mincss          :as mincss]
+            [helins.mincss.compiler :as mincss.compiler]))
 
 
 ;;;;;;;;;;
@@ -14,7 +15,7 @@
 
   ""
 
-  (mapv #(mincss/magic "ns"
+  (mapv #(mincss.compiler/magic "ns"
                        (str "var"
                             %))
         (range 4)))
@@ -30,49 +31,19 @@
 
 
 
-(t/deftest sel
-
-  (t/is (= ".class"
-           (mincss/sel "class"))
-        "Arity 1")
-  (t/is (= ".class-1:hover .class-2.class-3"
-           (mincss/sel "$$1:hover $$2$$3"
-                       {:$$1  "class-1"
-                        '$$2  "class-2"
-                        "$$3" "class-3"}))
-        "Variadic"))
-
-
-(t/deftest rule
-
-  (t/is (= [".class"
-            {:color 'red}]
-           (mincss/rule "class"
-                        {:color 'red}))
-        "With a class name")
-  (t/is (= [".class-1:hover .class-2"
-            {:color 'red}]
-           (mincss/rule "$1:hover $2"
-                        {:$1 "class-1"
-                         :$2 "class-2"}
-                        {:color 'red}))
-        "With placeholders"))
-
-
-
 (t/deftest regex+
 
-  (t/is (boolean (re-matches mincss/regex-magic
+  (t/is (boolean (re-matches mincss.compiler/regex-magic
                              (class-name+ 0)))
         "Can match class")
-  (t/is (boolean (re-matches mincss/regex-magic
+  (t/is (boolean (re-matches mincss.compiler/regex-magic
                              (str "--"
                                   (class-name+ 0))))
         "Can match var")
-  (t/is (boolean (re-matches mincss/regex-magic-class
+  (t/is (boolean (re-matches mincss.compiler/regex-magic-class
                              (class-name+ 0)))
         "Matches class name")
-  (t/is (boolean (re-matches mincss/regex-magic-dotted-class
+  (t/is (boolean (re-matches mincss.compiler/regex-magic-dotted-class
                              (mincss/sel (class-name+ 0))))
         "Matches dotted class name"))
 
@@ -84,7 +55,7 @@
                       (class-name+ 1)}
             :var+   #{(str "--"
                            (class-name+ 2))}}
-           (mincss/str->magic+ (str "fldksjflskdjf"
+           (mincss.compiler/str->magic+ (str "fldksjflskdjf"
                                     (class-name+ 0)
                                     "sldfkjsdlfksjkl"
                                     (class-name+ 1)
@@ -129,7 +100,7 @@
 
   ""
 
-  (mincss/atomize-rule+ [(mincss/rule (class-name+ 0)
+  (mincss.compiler/atomize-rule+ [(mincss/rule (class-name+ 0)
                                       {:background 'black
                                        :color      'black
                                        :margin     0})
@@ -181,7 +152,7 @@
 
   ""
 
-  (mincss/group-decl+ ctx-atomize-rule+))
+  (mincss.compiler/group-decl+ ctx-atomize-rule+))
 
 
 
@@ -203,7 +174,7 @@
 
   ""
 
-  (mincss/rename-class+ ctx-group-decl+))
+  (mincss.compiler/rename-class+ ctx-group-decl+))
 
 
 
@@ -236,7 +207,7 @@
 
   ""
 
-  (mincss/process-complex ctx-rename-class+))
+  (mincss.compiler/process-complex ctx-rename-class+))
 
 
 
@@ -257,7 +228,7 @@
             :seed        2
             :var->munged {"a" "--P1"
                           "b" "--P2"}}
-           (mincss/munge-var+ {:prefix "P"
+           (mincss.compiler/munge-var+ {:prefix "P"
                                :seed   0}
                               ["a" "b"]))))
 
@@ -274,7 +245,7 @@
              {:background "var( --v1, red)"
               :color      'red
               "--v2"      'green}]]
-           (-> (mincss/rename-var+ {:rule+       [["selector"
+           (-> (mincss.compiler/rename-var+ {:rule+       [["selector"
                                                    {:background (format "var( %s, red)"
                                                                         var-1)
                                                     :color      'red
