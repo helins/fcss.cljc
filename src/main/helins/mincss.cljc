@@ -122,14 +122,26 @@
 
   ;;
 
-  [sym docstring prefix]
+  [sym docstring string]
 
   (concat `(def ~sym)
           (when docstring
             [docstring])
-          (list (str prefix
-                     (mincss.compiler/magic (str *ns*)
-                                            (name sym))))))
+          [string]))
+
+
+
+(defn- -defmagic
+
+  ;;
+
+  [sym docstring prefix]
+
+  (-defname sym
+            docstring
+            (str prefix
+                 (mincss.compiler/magic (str *ns*)
+                                        (name sym)))))
 
 
 
@@ -143,16 +155,16 @@
 
   ([sym]
 
-   (-defname sym
-             nil
-             nil))
+   (-defmagic sym
+              nil
+              nil))
 
 
   ([sym docstring]
 
-   (-defname sym
-             docstring
-             nil)))
+   (-defmagic sym
+              docstring
+              nil)))
 
 
 
@@ -162,16 +174,16 @@
 
   ([sym]
 
-   (-defname sym
-             nil
-             nil))
+  `(defname ~sym
+            nil))
 
 
   ([sym docstring]
 
    (-defname sym
              docstring
-             nil)))
+             (mincss.compiler/namespaced-name (str *ns*)
+                                              (name sym)))))
 
 
 

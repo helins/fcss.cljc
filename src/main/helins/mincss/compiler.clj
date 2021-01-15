@@ -392,25 +392,37 @@
 
 
 
+(defn namespaced-name
+
+  ""
+
+  [str-ns str-sym]
+
+  (str (clojure.string/replace str-ns
+                               "."
+                               "__")
+       "__"
+       str-sym))
+
+
+
+
 (defn magic
 
   ""
 
-  [str-namespace str-sym]
+  [str-ns str-sym]
 
-  (let [class-name (str (clojure.string/replace str-namespace
-                                                "."
-                                                "__")
-                        "__"
-                        str-sym)]
+  (let [namespaced (namespaced-name str-ns
+                                    str-sym)]
     (if (and cljs.env/*compiler*
              (not (identical? (get-in @cljs.env/*compiler*
                                       [:options
                                        :optimizations])
                               :advanced)))
-      class-name
+      namespaced
       (str magic-word-begin
-           class-name
+           namespaced
            magic-word-end))))
 
 

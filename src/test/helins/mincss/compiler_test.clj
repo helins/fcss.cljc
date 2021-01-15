@@ -231,25 +231,3 @@
            (mincss.compiler/munge-var+ {:prefix "P"
                                :seed   0}
                               ["a" "b"]))))
-
-
-
-(mincss/defvar var-1)
-(mincss/defvar var-2)
-
-
-
-#_(t/deftest rename-var+
-
-  (t/is (= [["selector"
-             {:background "var( --v1, red)"
-              :color      'red
-              "--v2"      'green}]]
-           (-> (mincss.compiler/rename-var+ {:rule+       [["selector"
-                                                   {:background (format "var( %s, red)"
-                                                                        var-1)
-                                                    :color      'red
-                                                    var-2       'green}]]
-                                    :var->munged {var-1 "--v1"
-                                                  var-2 "--v2"}})
-               :rule+))))
