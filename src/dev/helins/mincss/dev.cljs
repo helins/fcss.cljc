@@ -14,7 +14,7 @@
 (def rule+
 
   [["body"
-    {:background 'blue}]])
+    {:background 'red}]])
 
 
 

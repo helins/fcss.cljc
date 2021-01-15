@@ -638,27 +638,43 @@
 #?(:cljs (do
 
 
+(defonce ^:private -d*element-stylesheet
 
-(let [v*element (volatile! nil)]
+  ;;
 
-  (defn global-style! 
+  (delay
+    (let [element (js/document.createElement "link")
+          v*url   (volatile! nil)]
+      (set! (.-rel element)
+            "stylesheet")
+      (.appendChild js/document.head
+                    element)
+      element)))
 
-    ""
 
-    [css-string]
 
-    (some->> @v*element
-             (.removeChild js/document.head))
-    (.appendChild js/document.head
-                  (let [element (js/document.createElement "style")]
-                    (set! (.-id element)
-                          "helins-mincss--global-styles")
-                    (set! (.-innerHTML element)
-                          css-string)
-                    (vreset! v*element
-                             element)
-                    element))
-    nil))
+(defonce ^:private -v*url
+
+  ;;
+
+  (volatile! nil))
+
+
+
+(defn global-style! 
+
+  ""
+
+  [css-string]
+
+  (some-> @-v*url
+          js/URL.revokeObjectURL)
+  (set! (.-href @-d*element-stylesheet)
+        (vreset! -v*url
+                 (js/URL.createObjectURL (js/File. [css-string]
+                                                   "helins_mincss.css"
+                                                   #js {"type" "text/css"}))))
+  nil)
 
 
 
