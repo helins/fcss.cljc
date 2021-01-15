@@ -8,7 +8,7 @@
 ;;;;;;;;;;
 
 
-;(require '[nrepl.server])  (defonce server (nrepl.server/start-server :port 4000))
+(require '[nrepl.server])  (defonce server (nrepl.server/start-server :port 4000))
 
 
 

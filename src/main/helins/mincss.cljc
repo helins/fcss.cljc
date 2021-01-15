@@ -3,6 +3,7 @@
   ""
 
   (:require [clojure.string]
+            [garden.types                   :as garden.type]
             #?(:clj [helins.mincss.compiler :as mincss.compiler]))
   #?(:cljs (:require-macros [helins.mincss])))
 
@@ -95,6 +96,16 @@
 
 
 
+(defn anim
+
+  ""
+
+  [string-name frame+]
+
+  (garden.type/->CSSAtRule :keyframes
+                          {:frames     frame+
+                           :identifier string-name}))
+
 
 
 
@@ -121,6 +132,10 @@
 
 
 
+
+
+
+
 (defmacro defclass
 
   ""
@@ -137,6 +152,26 @@
    (-defname sym
              docstring
              nil)))
+
+
+
+(defmacro defname
+
+  ""
+
+  ([sym]
+
+   (-defname sym
+             nil
+             nil))
+
+
+  ([sym docstring]
+
+   (-defname sym
+             docstring
+             nil)))
+
 
 
 
