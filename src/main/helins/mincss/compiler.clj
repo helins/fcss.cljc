@@ -386,9 +386,9 @@
             #(clojure.string/replace %1
                                      regex-magic-var
                                      (fn [magic-var]
-                                       (get var->munged
-                                            magic-var
-                                            magic-var))))))
+                                       (or (var->munged magic-var)
+                                           (str magic-var
+                                                "__DEAD")))))))
 
 
 
