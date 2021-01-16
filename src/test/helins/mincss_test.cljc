@@ -9,31 +9,28 @@
 ;;;;;;;;;;
 
 
+(mincss/defclass sel-class)
 
-(t/deftest sel
+(mincss/defid sel-id)
+
+
+
+(t/deftest templ
 
   (t/is (= ".class"
-           (mincss/sel "class"))
-        "Arity 1")
-  (t/is (= ".class-1:hover .class-2.class-3"
-           (mincss/sel "$$1:hover $$2$$3"
-                       {:$$1  "class-1"
-                        '$$2  "class-2"
-                        "$$3" "class-3"}))
+           (mincss/templ ".class"))
+        "Arity 1 with a string")
+  (t/is (= (str \.
+                sel-class)
+           (mincss/templ sel-class))
+        "Arity 1 with a Selector")
+  (t/is (= (str ".class:hover "
+                \.
+                sel-class
+                \#
+                sel-id)
+           (mincss/templ "$1:hover $2$3"
+                         {:$1 ".class"
+                          :$2 sel-class
+                          :$3 sel-id}))
         "Variadic"))
-
-
-(t/deftest rule
-
-  (t/is (= [".class"
-            {:color 'red}]
-           (mincss/rule "class"
-                        {:color 'red}))
-        "With a class name")
-  (t/is (= [".class-1:hover .class-2"
-            {:color 'red}]
-           (mincss/rule "$1:hover $2"
-                        {:$1 "class-1"
-                         :$2 "class-2"}
-                        {:color 'red}))
-        "With placeholders"))

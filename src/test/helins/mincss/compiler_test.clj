@@ -10,15 +10,11 @@
 
 ;;;;;;;;;;
 
+(mincss/defclass cl-0)
+(mincss/defclass cl-1)
+(mincss/defclass cl-2)
 
-(def class-name+
-
-  ""
-
-  (mapv #(mincss.compiler/magic "ns"
-                       (str "var"
-                            %))
-        (range 4)))
+(mincss/defvar var-0)
 
 
 
@@ -27,42 +23,42 @@
   ""
 
   (into #{}
-        class-name+))
+        (map str)
+        [cl-0
+         cl-1
+         cl-2]))
 
 
 
 (t/deftest regex+
 
   (t/is (boolean (re-matches mincss.compiler/regex-magic
-                             (class-name+ 0)))
+                             (str cl-0)))
         "Can match class")
   (t/is (boolean (re-matches mincss.compiler/regex-magic
-                             (str "--"
-                                  (class-name+ 0))))
+                             var-0))
         "Can match var")
   (t/is (boolean (re-matches mincss.compiler/regex-magic-class
-                             (class-name+ 0)))
+                             (str cl-0)))
         "Matches class name")
   (t/is (boolean (re-matches mincss.compiler/regex-magic-dotted-class
-                             (mincss/sel (class-name+ 0))))
+                             (mincss/templ cl-0)))
         "Matches dotted class name"))
 
 
 
 (t/deftest str->magic
 
-  (t/is (= {:class+ #{(class-name+ 0)
-                      (class-name+ 1)}
-            :var+   #{(str "--"
-                           (class-name+ 2))}}
+  (t/is (= {:class+ #{(str cl-0)
+                      (str cl-1)}
+            :var+   #{var-0}}
            (mincss.compiler/str->magic+ (str "fldksjflskdjf"
-                                    (class-name+ 0)
-                                    "sldfkjsdlfksjkl"
-                                    (class-name+ 1)
-                                    "lmklfk,l"
-                                    "--"
-                                    (class-name+ 2)
-                                    "lfdkslfkj")))))
+                                             (str cl-0)
+                                             "sldfkjsdlfksjkl"
+                                             (str cl-1)
+                                             "lmklfk,l"
+                                             (str var-0)
+                                             "lfdkslfkj")))))
 
 
 
@@ -70,8 +66,8 @@
 
   ""
 
-  (mincss/rule (str (class-name+ 0)
-                    ":hover")
+  (mincss/rule "$$:hover"
+               {:$$ cl-0}
                {:background 'red}))
 
 
@@ -80,9 +76,9 @@
 
   ""
 
-  (mincss/rule (str (class-name+ 0)
-                    ":active "
-                    (class-name+ 2))
+  (mincss/rule "$0:active $1"
+               {:$0 cl-0
+                :$1 cl-1}
                {:background 'green}))
 
 
@@ -91,7 +87,7 @@
 
   ""
 
-  (mincss/rule "untouched"
+  (mincss/rule ".untouched"
                {:color 'red}))
 
 
@@ -100,19 +96,19 @@
 
   ""
 
-  (mincss.compiler/atomize-rule+ [(mincss/rule (class-name+ 0)
-                                      {:background 'black
-                                       :color      'black
-                                       :margin     0})
-                         (mincss/rule (class-name+ 1)
-                                      {:background 'black
-                                       :color      'white})
-                         (mincss/rule (class-name+ 2)
-                                      {:background 'black})
-                         rule-complex
-                         rule-complex-nested
-                         rule-untouched]
-                        allow-list))
+  (mincss.compiler/atomize-rule+ [(mincss/rule cl-0
+                                               {:background 'black
+                                                :color      'black
+                                                :margin     0})
+                                  (mincss/rule cl-1
+                                               {:background 'black
+                                                :color      'white})
+                                  (mincss/rule cl-2
+                                               {:background 'black})
+                                  rule-complex
+                                  rule-complex-nested
+                                  rule-untouched]
+                                 allow-list))
 
 
 
@@ -123,19 +119,19 @@
   (let [{:keys [decl->class+
                 rule+
                 rule-complex+]} ctx-atomize-rule+]
-    (t/is (= {[:background 'black] #{(class-name+ 0)
-                                     (class-name+ 1)
-                                     (class-name+ 2)}
-              [:color 'black]      #{(class-name+ 0)}
-              [:color 'white]      #{(class-name+ 1)}
-              [:margin 0]          #{(class-name+ 0)}}
+    (t/is (= {[:background 'black] #{(str cl-0)
+                                     (str cl-1)
+                                     (str cl-2)}
+              [:color 'black]      #{(str cl-0)}
+              [:color 'white]      #{(str cl-1)}
+              [:margin 0]          #{(str cl-0)}}
              decl->class+)
           "CSS declarations are atomized")
-    (t/is (= #{{:class-name+ #{(class-name+ 0)}
+    (t/is (= #{{:class-name+ #{(str cl-0)}
                 :decl+       (second rule-complex)
                 :selector    (first rule-complex)}
-               {:class-name+ #{(class-name+ 0)
-                               (class-name+ 2)}
+               {:class-name+ #{(str cl-0)
+                               (str cl-1)}
                 :decl+       (second rule-complex-nested)
                 :selector    (first rule-complex-nested)}}
              (into #{}
@@ -145,6 +141,7 @@
                {:color 'red}]]
              rule+)
           "Rules not involving magic classes are detected")))
+
 
 
 
@@ -160,12 +157,12 @@
 
   (t/is (= (assoc ctx-group-decl+
                   :class+->style
-                  {#{(class-name+ 0)} {:color  'black
-                                       :margin 0}
-                   #{(class-name+ 1)} {:color 'white}
-                   #{(class-name+ 0)
-                     (class-name+ 1)
-                     (class-name+ 2)} {:background 'black}})
+                  {#{(str cl-0)} {:color  'black
+                                  :margin 0}
+                   #{(str cl-1)} {:color 'white}
+                   #{(str cl-0)
+                     (str cl-1)
+                     (str cl-2)} {:background 'black}})
            ctx-group-decl+)))
 
 
@@ -182,7 +179,7 @@
 
   (let [{:keys [original->munged+
                 rule+
-                seed]}               ctx-rename-class+]
+                seed]}             ctx-rename-class+]
     (t/is (= 3
              seed)
           "3 munged classes are created")
@@ -229,5 +226,5 @@
             :var->munged {"a" "--P1"
                           "b" "--P2"}}
            (mincss.compiler/munge-var+ {:prefix "P"
-                               :seed   0}
-                              ["a" "b"]))))
+                                        :seed   0}
+                                       ["a" "b"]))))

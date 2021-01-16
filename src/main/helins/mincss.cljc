@@ -16,55 +16,116 @@
 
 
 
+(defprotocol ITemplate
 
-
-
-
-
-(defn- -to-string
+ ; :extend-via-metadata  true
 
   ""
 
-  [x]
-  (cond
-    (keyword? x) (name x)
-    (string? x)  x
-    (symbol? x)  (str x)))
+  (str-templ [this]
+
+    ""))
 
 
 
 
-(defn sel
+(defrecord Selector [raw
+                     selector]
+
+  ITemplate
+
+    (str-templ [_]
+      selector)
+
+
+  Object
+
+    (toString [_]
+      raw))
+
+
+
+
+#?(:clj (do
+
+
+(defn- -defselector
+
+  ;;
+
+  [sym docstring f-selector]
+
+  (let [raw (mincss.compiler/magic (str *ns*)
+                                   (name sym))]
+    (concat `(def ~sym)
+            (when docstring
+              [docstring])
+            [`(helins.mincss/->Selector ~raw
+                                        ~(f-selector raw))])))
+
+
+
+(defmacro defclass
 
   ""
 
-  ([class-name]
+  ([sym]
 
-   (str \.
-        class-name))
+   `(defclass ~sym
+              nil))
 
 
-  ([selector placeholder->class-name]
+  ([sym docstring]
+
+   (-defselector sym
+                 docstring
+                 #(str \.
+                       %))))
+
+
+
+(defmacro defid
+
+  ""
+
+  ([sym]
+
+   `(defid ~sym
+           nil))
+
+
+  ([sym docstring]
+
+   (-defselector sym
+                 docstring
+                 #(str \#
+                       %))))
+
+))
+
+
+
+
+
+(defn templ
+
+  ""
+
+  ([templatable]
+
+   (if (string? templatable)
+     templatable
+     (str-templ templatable)))
+
+
+  ([template placeholder->templatable]
 
    (reduce-kv #(clojure.string/replace %1
-                                       (-to-string %2)
-                                       (sel %3))
-              selector
-              placeholder->class-name)))
+                                       (name %2)
+                                       (templ %3))
+              template
+              placeholder->templatable)))
 
-
-
-(defn sub
-
-  ""
-
-  [string placeholder->string]
-
-  (reduce-kv #(clojure.string/replace %1
-                                      (-to-string %2)
-                                      %3)
-             string
-             placeholder->string))
 
 
 
@@ -76,15 +137,15 @@
 
   ""
 
-  ([class-name style]
+  ([templatable style]
 
-   [(sel class-name)
+   [(templ templatable)
     style])
 
-  ([selector placeholder->class-name style]
+  ([template placeholder->templatable style]
 
-   [(sel selector
-         placeholder->class-name)
+   [(templ template
+           placeholder->templatable)
     style]))
 
 
