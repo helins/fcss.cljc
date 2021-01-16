@@ -123,7 +123,10 @@
    (reduce-kv #(clojure.string/replace %1
                                        (name %2)
                                        (templ %3))
-              template
+              (cond->>
+                template
+                (vector? template)
+                (clojure.string/join ","))
               placeholder->templatable)))
 
 
