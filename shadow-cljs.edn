@@ -6,20 +6,20 @@
                       :preloads   [shadow.remote.runtime.cljs.browser]}
    :modules          {:main {:entries [helins.mincss.dev]
                              :init-fn helins.mincss.dev/on-load}}
-   :output-dir       "public/js"
+   :output-dir       "resources/public/js"
    :target           :browser}
 
 
   :test
   {:target    :browser-test
    :runner-ns lambdaisland.chui.shadow.browser-runner
-   :test-dir  "chui"}}
+   :test-dir  "resources/chui"}}
 
  :deps
  {:alias [:cljs]}
  
  :dev-http
- {8000 "public"}
+ {8000 "resources/public"}
  
  :nrepl
  {:port 4000}
