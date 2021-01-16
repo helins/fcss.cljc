@@ -118,53 +118,23 @@
 #?(:clj (do
 
 
+
 (defn- -defname
-
-  ;;
-
-  [sym docstring string]
-
-  (concat `(def ~sym)
-          (when docstring
-            [docstring])
-          [string]))
-
-
-
-(defn- -defmagic
 
   ;;
 
   [sym docstring prefix]
 
-  (-defname sym
-            docstring
-            (str prefix
-                 (mincss.compiler/magic (str *ns*)
-                                        (name sym)))))
+  (concat `(def ~sym)
+          (when docstring
+            [docstring])
+          [(str prefix
+                (mincss.compiler/magic (str *ns*)
+                                       (name sym)))]))
 
 
 
 
-
-
-
-(defmacro defclass
-
-  ""
-
-  ([sym]
-
-   (-defmagic sym
-              nil
-              nil))
-
-
-  ([sym docstring]
-
-   (-defmagic sym
-              docstring
-              nil)))
 
 
 
@@ -174,17 +144,16 @@
 
   ([sym]
 
-  `(defname ~sym
-            nil))
+   (-defname sym
+             nil
+             nil))
 
 
   ([sym docstring]
 
    (-defname sym
              docstring
-             (mincss.compiler/namespaced-name (str *ns*)
-                                              (name sym)))))
-
+             nil)))
 
 
 

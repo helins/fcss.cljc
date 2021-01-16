@@ -371,24 +371,45 @@
 
 
 
-(defn rename-var+
+(defn rename-in-output
 
   ""
 
   [{:as   ctx
     :keys [output
+           prefix
            var->munged]}]
 
-  (cond->
-    ctx
-    (seq var->munged)
-    (update :output
-            #(clojure.string/replace %1
-                                     regex-magic-var
-                                     (fn [magic-var]
-                                       (or (var->munged magic-var)
-                                           (str magic-var
-                                                "__DEAD")))))))
+  (let [v*ctx    (volatile! ctx)
+        output-2 (clojure.string/replace output
+                                         regex-magic
+                                         (fn [magic-name]
+                                           (if (css-var? magic-name)
+                                             (or (get var->munged
+                                                      magic-name)
+                                                 (str magic-name
+                                                      "__DEAD"))
+                                             (let [path-munged [:class->munged
+                                                                magic-name]]
+                                               (get-in (vswap! v*ctx
+                                                               (fn [ctx-2]
+                                                                 (cond->
+                                                                   ctx-2
+                                                                   (not (get-in ctx-2
+                                                                                path-munged))
+                                                                   (do
+                                                                     (let [seed-2 (inc (ctx-2 :seed))]
+                                                                       (-> ctx-2
+                                                                           (assoc :seed
+                                                                                  seed-2)
+                                                                           (assoc-in [:class->munged
+                                                                                      magic-name]
+                                                                                     (str prefix
+                                                                                          seed-2))))))))
+                                                       path-munged)))))]
+    (assoc @v*ctx
+           :output
+           output-2)))
 
 
 
@@ -447,28 +468,40 @@
 
 
 
+
+(defn join-munged
+
+  ""
+
+  [{:as   ctx
+    :keys [original->munged+]}]
+
+  (assoc ctx
+         :class->munged
+         (into {}
+               (for [[class-name munged+] original->munged+]
+                 [class-name
+                  (clojure.string/join " "
+                                       munged+)]))))
+
+
 (defn write-file+
 
   ""
 
-  [opened-file+ {:keys [original->munged+
+  [opened-file+ {:keys [class->munged
                         var->munged]}]
   
-  (let [class->munged (into {}
-                            (for [[class-name munged+] original->munged+]
-                              [class-name
-                               (clojure.string/join " "
-                                                    munged+)]))]
-    (run! (fn [[path {:keys [content]}]]
-            (spit path
-                  (clojure.string/replace content
-                                          regex-magic
-                                          (fn [magic-name]
-                                            ((if (css-var? magic-name)
-                                               var->munged
-                                               class->munged)
-                                             magic-name)))))
-          opened-file+)))
+  (run! (fn [[path {:keys [content]}]]
+          (spit path
+                (clojure.string/replace content
+                                        regex-magic
+                                        (fn [magic-name]
+                                          ((if (css-var? magic-name)
+                                             var->munged
+                                             class->munged)
+                                           magic-name)))))
+        opened-file+))
 
 
 
@@ -488,11 +521,12 @@
                                       group-decl+
                                       rename-class+
                                       process-complex
+                                      join-munged
                                       (munge-var+ (into #{}
                                                         (mapcat :var+
                                                                 (vals opened-file+))))
                                       compile-rule+
-                                      rename-var+)]
+                                      rename-in-output)]
     (write-file+ opened-file+
                  ctx)
     ctx))
