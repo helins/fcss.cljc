@@ -3,13 +3,42 @@
   ""
 
   (:require [clojure.string]
+            [garden.color]
+            [garden.compiler]
             [garden.core                    :as garden]
             [garden.types                   :as garden.type]
+            [garden.util]
             #?(:clj [helins.mincss.compiler :as mincss.compiler]))
-  #?(:cljs (:require-macros [helins.mincss])))
+  #?(:cljs (:require-macros [helins.mincss]))
+  #?(:clj (:import garden.color.CSSColor
+                   garden.types.CSSUnit)))
 
 
 ;;;;;;;;;;
+
+
+
+(defn color->hex
+
+  ""
+
+  [color]
+
+  (let [alpha (color :alpha)
+        hex   (garden.color/as-hex color)]
+    (cond->
+      hex
+      alpha
+      (do
+        (let [append (-> (Math/round (double (* alpha
+                                                255)))
+                         (garden.util/int->string 16))]
+          (str hex
+               (when (= (count append)
+                        1)
+                 "0")
+               append))))))
+
 
 
 
@@ -22,9 +51,47 @@
 
   ""
 
-  (str-templ [this]
+  (-templ [this]
 
     ""))
+
+
+
+(extend-protocol ITemplate
+
+  garden.color.CSSColor
+
+    (-templ [color]
+      (garden.compiler/render-css color))
+
+
+  garden.types.CSSUnit
+
+    (-templ [unit]
+      (garden.compiler/render-css unit))
+
+
+  #?(:clj  Number
+     :cljs number)
+
+    (-templ [n]
+      (str n))
+
+
+  #?(:clj   Object
+     :cljs object)
+
+    (-templ [o]
+      (str o))
+
+
+  #?(:clj   java.lang.String
+     :cljs string)
+
+    (-templ [string]
+      string))
+
+
 
 
 
@@ -34,7 +101,7 @@
 
   ITemplate
 
-    (str-templ [_]
+    (-templ [_]
       selector)
 
 
@@ -113,9 +180,7 @@
 
   ([templatable]
 
-   (if (string? templatable)
-     templatable
-     (str-templ templatable)))
+   (-templ templatable))
 
 
   ([template placeholder->templatable]
