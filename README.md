@@ -1,4 +1,4 @@
-# MinCSS
+# Functional CSS
 
 
 ## License

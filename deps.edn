@@ -7,16 +7,13 @@
  ["src/main"]
 
  :aliases
- {:advanced
-  {:jvm-opts ["-Dhelins.mincss.advanced=true"]}
-
-  :cljs
+ {:cljs
   {:extra-deps {thheller/shadow-cljs {:mvn/version "2.9.10"}}
    :main-opts  ["-m" "shadow.cljs.devtools.cli"]}
 
   :deploy
   {:extra-deps {deps-deploy {:mvn/version "0.0.9"}}
-   :main-opts  ["-m" "deps-deploy.deps-deploy" "deploy" "mincss.jar"]}
+   :main-opts  ["-m" "deps-deploy.deps-deploy" "deploy" "fcss.jar"]}
 
   :dev
   {:extra-deps  {criterium {:mvn/version "0.4.5"}}
@@ -24,11 +21,11 @@
 
   :jar
   {:extra-deps {seancorfield/depstar {:mvn/version "0.5.2"}}
-   :main-opts ["-m" "hf.depstar.jar" "mincss.jar"]}
+   :main-opts ["-m" "hf.depstar.jar" "fcss.jar"]}
 
   :install
   {:extra-deps {deps-deploy {:mvn/version "0.0.9"}}
-   :main-opts ["-m" "deps-deploy.deps-deploy" "install" "mincss.jar"]}
+   :main-opts ["-m" "deps-deploy.deps-deploy" "install" "fcss.jar"]}
 
   :test
   {:extra-deps  {lambdaisland/chui        {:mvn/version "0.0.117"}

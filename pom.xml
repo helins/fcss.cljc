@@ -2,11 +2,11 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.helins</groupId>
-  <artifactId>mincss</artifactId>
+  <artifactId>fcss</artifactId>
   <version>0.0.0-alpha0</version>
-  <name>MinCSS</name>
-  <description>Minifying Garden classes showing up in advanced CLJS builds</description>
-  <url>https://github.com/helins-io/mincss.cljc</url>
+  <name>FCSS</name>
+  <description>Idiomatic functional CSS</description>
+  <url>https://github.com/helins-io/fcss.cljc</url>
   <licenses>
     <license>
       <name>Eclipse Public License</name>
@@ -19,9 +19,9 @@
     </developer>
   </developers>
   <scm>
-    <url>https://github.com/helins-io/mincss.cljc</url>
-    <connection>scm:git:git://github.com/helins-io/mincss.cljc.git</connection>
-    <developerConnection>scm:git:ssh://git@github.com/helins-io/mincss.cljc.git</developerConnection>
+    <url>https://github.com/helins-io/fcss.cljc</url>
+    <connection>scm:git:git://github.com/helins-io/fcss.cljc.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/helins-io/fcss.cljc.git</developerConnection>
     <tag>HEAD</tag>
   </scm>
   <dependencies>

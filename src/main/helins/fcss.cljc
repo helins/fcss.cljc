@@ -1,15 +1,15 @@
-(ns helins.mincss
+(ns helins.fcss
 
   ""
 
   (:require [clojure.string]
             [garden.color]
             [garden.compiler]
-            [garden.core                    :as garden]
-            [garden.types                   :as garden.type]
+            [garden.core                  :as garden]
+            [garden.types                 :as garden.type]
             [garden.util]
-            #?(:clj [helins.mincss.compiler :as mincss.compiler]))
-  #?(:cljs (:require-macros [helins.mincss]))
+            #?(:clj [helins.fcss.compiler :as fcss.compiler]))
+  #?(:cljs (:require-macros [helins.fcss]))
   #?(:clj (:import garden.color.CSSColor
                    garden.types.CSSUnit)))
 
@@ -122,13 +122,13 @@
 
   [sym docstring f-selector]
 
-  (let [raw (mincss.compiler/magic (str *ns*)
-                                   (name sym))]
+  (let [raw (fcss.compiler/magic (str *ns*)
+                                 (name sym))]
     (concat `(def ~sym)
             (when docstring
               [docstring])
-            [`(helins.mincss/->Selector ~raw
-                                        ~(f-selector raw))])))
+            [`(helins.fcss/->Selector ~raw
+                                      ~(f-selector raw))])))
 
 
 
@@ -258,7 +258,7 @@
           (when docstring
             [docstring])
           [(str prefix
-                (mincss.compiler/magic (str *ns*)
+                (fcss.compiler/magic (str *ns*)
                                        (name sym)))]))
 
 
@@ -331,7 +331,7 @@
     (let [element (js/document.createElement "link")
           v*url   (volatile! nil)]
       (set! (.-id element)
-            "helins-mincss--stylesheet")
+            "helins-fcss--stylesheet")
       (set! (.-rel element)
             "stylesheet")
       (.appendChild js/document.head
@@ -359,7 +359,7 @@
   (set! (.-href @-d*element-stylesheet)
         (vreset! -v*url
                  (js/URL.createObjectURL (js/File. [css-string]
-                                                   "helins_mincss.css"
+                                                   "helins_fcss.css"
                                                    #js {"type" "text/css"}))))
   nil)
 

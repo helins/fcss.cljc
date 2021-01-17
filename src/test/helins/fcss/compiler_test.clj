@@ -1,20 +1,20 @@
-(ns helins.mincss.compiler-test
+(ns helins.fcss.compiler-test
 
   ""
 
   (:require [clojure.set]
-            [clojure.test           :as t]
-            [helins.mincss          :as mincss]
-            [helins.mincss.compiler :as mincss.compiler]))
+            [clojure.test         :as t]
+            [helins.fcss          :as fcss]
+            [helins.fcss.compiler :as fcss.compiler]))
 
 
 ;;;;;;;;;;
 
-(mincss/defclass cl-0)
-(mincss/defclass cl-1)
-(mincss/defclass cl-2)
+(fcss/defclass cl-0)
+(fcss/defclass cl-1)
+(fcss/defclass cl-2)
 
-(mincss/defvar var-0)
+(fcss/defvar var-0)
 
 
 
@@ -32,17 +32,17 @@
 
 (t/deftest regex+
 
-  (t/is (boolean (re-matches mincss.compiler/regex-magic
+  (t/is (boolean (re-matches fcss.compiler/regex-magic
                              (str cl-0)))
         "Can match class")
-  (t/is (boolean (re-matches mincss.compiler/regex-magic
+  (t/is (boolean (re-matches fcss.compiler/regex-magic
                              var-0))
         "Can match var")
-  (t/is (boolean (re-matches mincss.compiler/regex-magic-class
+  (t/is (boolean (re-matches fcss.compiler/regex-magic-class
                              (str cl-0)))
         "Matches class name")
-  (t/is (boolean (re-matches mincss.compiler/regex-magic-dotted-class
-                             (mincss/templ cl-0)))
+  (t/is (boolean (re-matches fcss.compiler/regex-magic-dotted-class
+                             (fcss/templ cl-0)))
         "Matches dotted class name"))
 
 
@@ -52,13 +52,13 @@
   (t/is (= {:class+ #{(str cl-0)
                       (str cl-1)}
             :var+   #{var-0}}
-           (mincss.compiler/str->magic+ (str "fldksjflskdjf"
-                                             (str cl-0)
-                                             "sldfkjsdlfksjkl"
-                                             (str cl-1)
-                                             "lmklfk,l"
-                                             (str var-0)
-                                             "lfdkslfkj")))))
+           (fcss.compiler/str->magic+ (str "fldksjflskdjf"
+                                           (str cl-0)
+                                           "sldfkjsdlfksjkl"
+                                           (str cl-1)
+                                           "lmklfk,l"
+                                           (str var-0)
+                                           "lfdkslfkj")))))
 
 
 
@@ -66,9 +66,9 @@
 
   ""
 
-  (mincss/rule "$$:hover"
-               {:$$ cl-0}
-               {:background 'red}))
+  (fcss/rule "$$:hover"
+             {:$$ cl-0}
+             {:background 'red}))
 
 
 
@@ -76,10 +76,10 @@
 
   ""
 
-  (mincss/rule "$0:active $1"
-               {:$0 cl-0
-                :$1 cl-1}
-               {:background 'green}))
+  (fcss/rule "$0:active $1"
+             {:$0 cl-0
+              :$1 cl-1}
+             {:background 'green}))
 
 
 
@@ -87,8 +87,8 @@
 
   ""
 
-  (mincss/rule ".untouched"
-               {:color 'red}))
+  (fcss/rule ".untouched"
+             {:color 'red}))
 
 
 
@@ -96,19 +96,19 @@
 
   ""
 
-  (mincss.compiler/atomize-rule+ [(mincss/rule cl-0
-                                               {:background 'black
-                                                :color      'black
-                                                :margin     0})
-                                  (mincss/rule cl-1
-                                               {:background 'black
-                                                :color      'white})
-                                  (mincss/rule cl-2
-                                               {:background 'black})
-                                  rule-complex
-                                  rule-complex-nested
-                                  rule-untouched]
-                                 allow-list))
+  (fcss.compiler/atomize-rule+ [(fcss/rule cl-0
+                                             {:background 'black
+                                              :color      'black
+                                              :margin     0})
+                                (fcss/rule cl-1
+                                             {:background 'black
+                                              :color      'white})
+                                (fcss/rule cl-2
+                                             {:background 'black})
+                                rule-complex
+                                rule-complex-nested
+                                rule-untouched]
+                               allow-list))
 
 
 
@@ -149,7 +149,7 @@
 
   ""
 
-  (mincss.compiler/group-decl+ ctx-atomize-rule+))
+  (fcss.compiler/group-decl+ ctx-atomize-rule+))
 
 
 
@@ -171,7 +171,7 @@
 
   ""
 
-  (mincss.compiler/rename-class+ ctx-group-decl+))
+  (fcss.compiler/rename-class+ ctx-group-decl+))
 
 
 
@@ -204,7 +204,7 @@
 
   ""
 
-  (mincss.compiler/process-complex ctx-rename-class+))
+  (fcss.compiler/process-complex ctx-rename-class+))
 
 
 
@@ -225,6 +225,6 @@
             :seed        2
             :var->munged {"a" "--P1"
                           "b" "--P2"}}
-           (mincss.compiler/munge-var+ {:prefix "P"
-                                        :seed   0}
-                                       ["a" "b"]))))
+           (fcss.compiler/munge-var+ {:prefix "P"
+                                      :seed   0}
+                                     ["a" "b"]))))

@@ -1,4 +1,4 @@
-(ns helins.mincss.compiler
+(ns helins.fcss.compiler
 
   ""
 
@@ -32,7 +32,7 @@
 
   ""
 
-  "__hmc")
+  "_fcss")
 
 
 
