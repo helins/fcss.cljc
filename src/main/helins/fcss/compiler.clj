@@ -127,7 +127,9 @@
 
   ""
 
-  [rule+ allow-list]
+  [{:as   ctx
+    :keys [detected-name+
+           rule+]}]
 
   (reduce (fn [ctx rule]
             (if (vector? rule)
@@ -137,7 +139,7 @@
                                                         str-selector+)]
                   (let [class-name (.substring ^String dotted-class-name
                                                1)]
-                    (if (contains? allow-list
+                    (if (contains? detected-name+
                                    class-name)
                       (update ctx
                               :decl->class+
@@ -153,7 +155,7 @@
                   (if-some [class-name+ (not-empty (into #{}
                                                          (re-seq regex-magic-class
                                                                  str-selector+)))]
-                    (if (= (count (filter allow-list
+                    (if (= (count (filter detected-name+
                                           class-name+))
                            (count class-name+))
 
@@ -168,9 +170,10 @@
                               rule))))
               (add-rule ctx
                         rule)))
-          {:decl->class+  {}
-           :rule+         []
-           :rule-complex+ []}
+          (assoc ctx
+                 :decl->class+  {}
+                 :rule+         []
+                 :rule-complex+ [])
           rule+))
 
 
@@ -509,15 +512,17 @@
 
   ""
 
-  [path+ rule+]
+  [{:as   ctx
+    :keys [path-cljs+]}]
 
-  (let [opened-file+              (open-file+ path+)
+  (let [opened-file+              (open-file+ path-cljs+)
         {:as   ctx
          :keys [original->munged+
-                rule+]}           (-> (atomize-rule+ rule+
-                                                     (into #{}
-                                                           (mapcat :class+
-                                                                   (vals opened-file+))))
+                rule+]}           (-> (atomize-rule+ (assoc ctx
+                                                            :detected-name+
+                                                            (into #{}
+                                                                  (mapcat :class+
+                                                                          (vals opened-file+)))))
                                       group-decl+
                                       rename-class+
                                       process-complex

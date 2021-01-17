@@ -18,7 +18,7 @@
 
 
 
-(def allow-list
+(def detected-name+
 
   ""
 
@@ -96,19 +96,19 @@
 
   ""
 
-  (fcss.compiler/atomize-rule+ [(fcss/rule cl-0
-                                             {:background 'black
-                                              :color      'black
-                                              :margin     0})
-                                (fcss/rule cl-1
-                                             {:background 'black
-                                              :color      'white})
-                                (fcss/rule cl-2
-                                             {:background 'black})
-                                rule-complex
-                                rule-complex-nested
-                                rule-untouched]
-                               allow-list))
+  (fcss.compiler/atomize-rule+ {:detected-name+ detected-name+
+                                :rule+          [(fcss/rule cl-0
+                                                            {:background 'black
+                                                             :color      'black
+                                                             :margin     0})
+                                               (fcss/rule cl-1
+                                                            {:background 'black
+                                                             :color      'white})
+                                               (fcss/rule cl-2
+                                                            {:background 'black})
+                                               rule-complex
+                                               rule-complex-nested
+                                               rule-untouched]}))
 
 
 
