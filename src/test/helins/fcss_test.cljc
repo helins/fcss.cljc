@@ -70,6 +70,18 @@
                                    #"\s+"
                                    " "))
         "With Garden Colors")
+  (t/is (= (clojure.string/replace "rgba( calc(0 + (100 - 0) * var(--test-var)),
+                                          calc(0 + (110 - 0) * var(--test-var)),
+                                          calc(0 + (120 - 0) * var(--test-var)),
+                                          calc(1 + (0.5 - 1) * var(--test-var)))" 
+                                   #"\s+"
+                                   " ")
+           (clojure.string/replace (fcss/interpolate "--test-var"
+                                                     (garden.color/hsl 0 0 0)
+                                                     (garden.color/rgba 100 110 120 0.5))
+                                   #"\s+"
+                                   " "))
+        "With alpha Garden Colors")
   (t/is (= "calc(10px + (2em - 10px) * var(--test-var))"
            (fcss/interpolate "--test-var"
                              (garden.unit/px 10)

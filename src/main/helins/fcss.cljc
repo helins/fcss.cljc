@@ -258,19 +258,36 @@
                                          (throw (ex-info "Cannot interpolate color to non-color"
                                                          {:from from
                                                           :to   to})))
-                                       (let [rgb-1 (garden.color/as-rgb from)
-                                             rgb-2 (garden.color/as-rgb to)
-                                             ]
-                                         (templ "rgb( calc($r-1 + ($r-2 - $r-1) * var($var)),
-                                                      calc($g-1 + ($g-2 - $g-1) * var($var)),
-                                                      calc($b-1 + ($b-2 - $b-1) * var($var)))"
-                                                {:$b-1 (rgb-1 :blue)
-                                                 :$b-2 (rgb-2 :blue)
-                                                 :$r-1 (rgb-1 :red)
-                                                 :$r-2 (rgb-2 :red)
-                                                 :$g-1 (rgb-1 :green)
-                                                 :$g-2 (rgb-2 :green)
-                                                 :$var css-var})))
+                                       (let [alpha-1   (:alpha from)
+                                             alpha-2   (:alpha to)
+                                             css-var-2 (str "var("
+                                                            css-var
+                                                            ")")
+                                             rgb-1     (garden.color/as-rgb from)
+                                             rgb-2     (garden.color/as-rgb to)
+                                             calc+     (templ "calc($r-1 + ($r-2 - $r-1) * $var),
+                                                               calc($g-1 + ($g-2 - $g-1) * $var),
+                                                               calc($b-1 + ($b-2 - $b-1) * $var)"
+                                                              {:$b-1 (rgb-1 :blue)
+                                                               :$b-2 (rgb-2 :blue)
+                                                               :$r-1 (rgb-1 :red)
+                                                               :$r-2 (rgb-2 :red)
+                                                               :$g-1 (rgb-1 :green)
+                                                               :$g-2 (rgb-2 :green)
+                                                               :$var css-var-2})]
+                                         (if (or alpha-1
+                                                 alpha-2)
+                                           (templ "rgba( $calc+,
+                                                         calc($a-1 + ($a-2 - $a-1) * $var))"
+                                                  {:$a-1   (or alpha-1
+                                                               1)
+                                                   :$a-2   (or alpha-2
+                                                               1)
+                                                   :$calc+ calc+
+                                                   :$var   css-var-2})
+                                           (str "rgb( "
+                                                calc+
+                                                ")"))))
     (instance? garden.types.CSSUnit
                from)                (do
                                       (when-not (instance? garden.types.CSSUnit
