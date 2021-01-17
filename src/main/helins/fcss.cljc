@@ -45,6 +45,7 @@
 
 
 
+
 (defprotocol ITemplate
 
  ; :extend-via-metadata  true
@@ -239,6 +240,57 @@
 
 
 
+
+
+
+
+(defn interpolate
+
+  ""
+
+  [css-var from to]
+
+  (cond
+    (instance? garden.color.CSSColor
+               from)                 (do
+                                       (when-not (instance? garden.color.CSSColor
+                                                            to)
+                                         (throw (ex-info "Cannot interpolate color to non-color"
+                                                         {:from from
+                                                          :to   to})))
+                                       (let [rgb-1 (garden.color/as-rgb from)
+                                             rgb-2 (garden.color/as-rgb to)
+                                             ]
+                                         (templ "rgb( calc($r-1 + ($r-2 - $r-1) * var($var)),
+                                                      calc($g-1 + ($g-2 - $g-1) * var($var)),
+                                                      calc($b-1 + ($b-2 - $b-1) * var($var)))"
+                                                {:$b-1 (rgb-1 :blue)
+                                                 :$b-2 (rgb-2 :blue)
+                                                 :$r-1 (rgb-1 :red)
+                                                 :$r-2 (rgb-2 :red)
+                                                 :$g-1 (rgb-1 :green)
+                                                 :$g-2 (rgb-2 :green)
+                                                 :$var css-var})))
+    (instance? garden.types.CSSUnit
+               from)                (do
+                                      (when-not (instance? garden.types.CSSUnit
+                                                           to)
+                                        (throw (ex-info "Cannot interpolate unit to non-unit"
+                                                        {:from from
+                                                         :to   to})))
+                                      (templ "calc($from + ($to - $from) * var($var))"
+                                                                              {:$from from
+                                                                               :$to   to
+                                                                               :$var  css-var}))
+    :else                           (str "calc("
+                                         from
+                                         " + ("
+                                         to
+                                         " - "
+                                         from
+                                         ") * var("
+                                         css-var
+                                         "))")))
 
 
 

@@ -4,7 +4,8 @@
 
   (:require [cljs.env]
             [clojure.string]
-            [garden.core     :as garden]))
+            [garden.core     :as garden]
+            [garden.compiler]))
 
 
 ;;;;;;;;;;
@@ -126,6 +127,8 @@
 (defn atomize-rule+
 
   ""
+
+  ;; TODO. Ensure declaration equality by already compiling them.
 
   [{:as   ctx
     :keys [detected-name+

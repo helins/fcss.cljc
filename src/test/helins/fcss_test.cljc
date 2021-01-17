@@ -2,7 +2,8 @@
 
   ""
 
-  (:require [clojure.test  :as t]
+  (:require [clojure.string]
+            [clojure.test  :as t]
             [garden.color]
             [garden.units  :as garden.unit]
             [helins.fcss   :as fcss]))
@@ -51,3 +52,31 @@
                         :$2 sel-class
                         :$3 sel-id}))
         "Variadic"))
+
+
+
+
+
+(t/deftest interpolate
+
+  (t/is (= (clojure.string/replace "rgb( calc(0 + (100 - 0) * var(--test-var)),
+                                         calc(0 + (110 - 0) * var(--test-var)),
+                                         calc(0 + (120 - 0) * var(--test-var)))"
+                                   #"\s+"
+                                   " ")
+           (clojure.string/replace (fcss/interpolate "--test-var"
+                                                     (garden.color/hsl 0 0 0)
+                                                     (garden.color/rgb 100 110 120))
+                                   #"\s+"
+                                   " "))
+        "With Garden Colors")
+  (t/is (= "calc(10px + (2em - 10px) * var(--test-var))"
+           (fcss/interpolate "--test-var"
+                             (garden.unit/px 10)
+                             (garden.unit/em 2)))
+        "With Garden Units")
+  (t/is (= "calc(10 + (50 - 10) * var(--test-var))"
+           (fcss/interpolate "--test-var"
+                             10
+                             50))
+        "With any values"))
