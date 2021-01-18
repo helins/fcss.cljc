@@ -64,9 +64,9 @@
                                          calc(0 + (120 - 0) * var(--test-var)))"
                                    #"\s+"
                                    " ")
-           (clojure.string/replace (fcss/interpolate "--test-var"
-                                                     (garden.color/hsl 0 0 0)
-                                                     (garden.color/rgb 100 110 120))
+           (clojure.string/replace (fcss/interpolate (garden.color/hsl 0 0 0)
+                                                     (garden.color/rgb 100 110 120)
+                                                     "--test-var")
                                    #"\s+"
                                    " "))
         "With Garden Colors")
@@ -76,19 +76,19 @@
                                           calc(1 + (0.5 - 1) * var(--test-var)))" 
                                    #"\s+"
                                    " ")
-           (clojure.string/replace (fcss/interpolate "--test-var"
-                                                     (garden.color/hsl 0 0 0)
-                                                     (garden.color/rgba 100 110 120 0.5))
+           (clojure.string/replace (fcss/interpolate (garden.color/hsl 0 0 0)
+                                                     (garden.color/rgba 100 110 120 0.5)
+                                                     "--test-var")
                                    #"\s+"
                                    " "))
         "With alpha Garden Colors")
   (t/is (= "calc(10px + (2em - 10px) * var(--test-var))"
-           (fcss/interpolate "--test-var"
-                             (garden.unit/px 10)
-                             (garden.unit/em 2)))
+           (fcss/interpolate (garden.unit/px 10)
+                             (garden.unit/em 2)
+                             "--test-var"))
         "With Garden Units")
   (t/is (= "calc(10 + (50 - 10) * var(--test-var))"
-           (fcss/interpolate "--test-var"
-                             10
-                             50))
+           (fcss/interpolate 10
+                             50
+                             "--test-var"))
         "With any values"))
