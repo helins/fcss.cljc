@@ -48,9 +48,9 @@
                 \#
                 sel-id)
            (fcss/templ "$1:hover $2$3"
-                       {:$1 ".class"
-                        :$2 sel-class
-                        :$3 sel-id}))
+                       {1  ".class"
+                        :2 sel-class
+                        :3 sel-id}))
         "Variadic"))
 
 

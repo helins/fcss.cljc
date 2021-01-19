@@ -67,7 +67,7 @@
   ""
 
   (fcss/rule "$$:hover"
-             {:$$ cl-0}
+             {:$ cl-0}
              {:background 'red}))
 
 
@@ -77,8 +77,8 @@
   ""
 
   (fcss/rule "$0:active $1"
-             {:$0 cl-0
-              :$1 cl-1}
+             {0 cl-0
+              1 cl-1}
              {:background 'green}))
 
 
