@@ -114,6 +114,7 @@
 
 
 
+
 #?(:clj (do
 
 
@@ -124,7 +125,9 @@
   [sym docstring f-selector]
 
   (let [raw (fcss.compiler/magic (str *ns*)
-                                 (name sym))]
+                                 (clojure.string/replace (name sym)
+                                                         #"\+$"
+                                                         "s"))]
     (concat `(def ~sym)
             (when docstring
               [docstring])
@@ -189,10 +192,11 @@
    (reduce-kv #(clojure.string/replace %1
                                        (name %2)
                                        (templ %3))
-              (cond->>
-                template
-                (vector? template)
-                (clojure.string/join ","))
+              (if (vector? template)
+                (clojure.string/join ","
+                                     (map templ
+                                          template))
+                template)
               placeholder->templatable)))
 
 
@@ -285,9 +289,7 @@
                            ")")
             rgb-1     (garden.color/as-rgb from)
             rgb-2     (garden.color/as-rgb to)
-            calc+     (templ "calc($r-1 + ($r-2 - $r-1) * $var),
-                              calc($g-1 + ($g-2 - $g-1) * $var),
-                              calc($b-1 + ($b-2 - $b-1) * $var)"
+            calc+     (templ "calc($r-1 + ($r-2 - $r-1) * $var), calc($g-1 + ($g-2 - $g-1) * $var), calc($b-1 + ($b-2 - $b-1) * $var)"
                              {:$b-1 (rgb-1 :blue)
                               :$b-2 (rgb-2 :blue)
                               :$r-1 (rgb-1 :red)
@@ -297,17 +299,14 @@
                               :$var css-var-2})]
         (if (or alpha-1
                 alpha-2)
-          (templ "rgba( $calc+,
-                        calc($a-1 + ($a-2 - $a-1) * $var))"
+          (templ "rgba( $calc+, calc($a-1 + ($a-2 - $a-1) * $var))"
                  {:$a-1   (or alpha-1
                               1)
                   :$a-2   (or alpha-2
                               1)
                   :$calc+ calc+
                   :$var   css-var-2})
-          (str "rgb( "
-               calc+
-               ")"))))
+          (str "rgb( " calc+ ")"))))
 
 
   garden.types.CSSUnit
