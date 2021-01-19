@@ -29,19 +29,29 @@
   (t/is (= ".class"
            (fcss/templ ".class"))
         "Arity 1 with a string")
+
   (t/is (= "hsla(0, 0%, 0%, 1)"
            (fcss/templ (garden.color/hsla 0 0 0 1)))
         "Arity 1 with a Garden Color")
+
   (t/is (= "42px"
            (fcss/templ (garden.unit/px 42)))
         "Arity 1 with a Garden Unit")
+
   (t/is (= "42"
            (fcss/templ 42))
         "Arity 1 with any object")
+
   (t/is (= (str \.
                 sel-class)
            (fcss/templ sel-class))
         "Arity 1 with a Selector")
+
+  (t/is (= (str \. sel-class ":hover")
+           (fcss/templ "&:hover"
+                       sel-class))
+        "With the special & placeholder")
+
   (t/is (= (str ".class:hover "
                 \.
                 sel-class

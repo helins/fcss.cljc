@@ -189,22 +189,28 @@
 
   ([template placeholder->templatable]
 
-   (reduce-kv #(clojure.string/replace %1
-                                       (cond
-                                         (keyword? %2) (str \$
-                                                            (name %2))
-                                         (number? %2)  (str \$
-                                                            %2)
-                                         :else         (throw (ex-info "Placeholder must be keyword or number"
-                                                                       {:placeholder %2
-                                                                        :template    template})))
-                                       (templ %3))
-              (if (vector? template)
-                (clojure.string/join ","
-                                     (map templ
-                                          template))
-                template)
-              placeholder->templatable)))
+   (let [template-2 (if (vector? template)
+                      (clojure.string/join ","
+                                           (map templ
+                                                template))
+                      template)]
+     (if (clojure.string/includes? template-2
+                                   "&")
+       (clojure.string/replace template-2
+                               "&"
+                               (templ placeholder->templatable))
+       (reduce-kv #(clojure.string/replace %1
+                                           (cond
+                                             (keyword? %2) (str \$
+                                                                (name %2))
+                                             (number? %2)  (str \$
+                                                                %2)
+                                             :else         (throw (ex-info "Placeholder must be keyword or number"
+                                                                           {:placeholder %2
+                                                                            :template    template})))
+                                           (templ %3))
+                  template-2
+                  placeholder->templatable)))))
 
 
 
