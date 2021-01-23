@@ -36,7 +36,7 @@
                              (str cl-0)))
         "Can match class")
   (t/is (boolean (re-matches fcss.compiler/regex-magic
-                             var-0))
+                             (str var-0)))
         "Can match var")
   (t/is (boolean (re-matches fcss.compiler/regex-magic-class
                              (str cl-0)))
@@ -51,7 +51,7 @@
 
   (t/is (= {:class+ #{(str cl-0)
                       (str cl-1)}
-            :var+   #{var-0}}
+            :var+   #{(str var-0)}}
            (fcss.compiler/str->magic+ (str "fldksjflskdjf"
                                            (str cl-0)
                                            "sldfkjsdlfksjkl"

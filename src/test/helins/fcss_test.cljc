@@ -12,9 +12,11 @@
 ;;;;;;;;;;
 
 
-(fcss/defclass sel-class)
+(fcss/defclass css-class)
 
-(fcss/defid sel-id)
+(fcss/defid css-id)
+
+(fcss/defvar css-var)
 
 
 
@@ -26,41 +28,50 @@
 
 (t/deftest templ
 
-  (t/is (= ".class"
-           (fcss/templ ".class"))
-        "Arity 1 with a string")
+  (t/is (= (str \.
+                css-class)
+           (fcss/templ css-class))
+        "CSS class")
+
+  (t/is (= (str \#
+                css-id)
+           (fcss/templ css-id))
+        "CSS id")
+
+  (t/is (= (str "var(" css-var ")")
+           (fcss/templ css-var))
+        "CSS var")
 
   (t/is (= "hsla(0, 0%, 0%, 1)"
            (fcss/templ (garden.color/hsla 0 0 0 1)))
-        "Arity 1 with a Garden Color")
+        "Garden Color")
 
   (t/is (= "42px"
            (fcss/templ (garden.unit/px 42)))
-        "Arity 1 with a Garden Unit")
+        "Garden Unit")
 
   (t/is (= "42"
            (fcss/templ 42))
-        "Arity 1 with any object")
+        "Number")
 
-  (t/is (= (str \.
-                sel-class)
-           (fcss/templ sel-class))
-        "Arity 1 with a Selector")
+  (t/is (= ".class"
+           (fcss/templ ".class"))
+        "String")
 
-  (t/is (= (str \. sel-class ":hover")
+  (t/is (= (str \. css-class ":hover")
            (fcss/templ "&:hover"
-                       sel-class))
+                       css-class))
         "With the special & placeholder")
 
   (t/is (= (str ".class:hover "
                 \.
-                sel-class
+                css-class
                 \#
-                sel-id)
+                css-id)
            (fcss/templ "$1:hover $2$3"
                        {1  ".class"
-                        :2 sel-class
-                        :3 sel-id}))
+                        :2 css-class
+                        :3 css-id}))
         "Variadic"))
 
 
@@ -69,9 +80,9 @@
 
 (t/deftest interpolate
 
-  (t/is (= (clojure.string/replace "rgb( calc(0 + (100 - 0) * var(--test-var)),
-                                         calc(0 + (110 - 0) * var(--test-var)),
-                                         calc(0 + (120 - 0) * var(--test-var)))"
+  (t/is (= (clojure.string/replace "rgb( calc(0 + (100 - 0) * --test-var),
+                                         calc(0 + (110 - 0) * --test-var),
+                                         calc(0 + (120 - 0) * --test-var))"
                                    #"\s+"
                                    " ")
            (clojure.string/replace (fcss/interpolate (garden.color/hsl 0 0 0)
@@ -80,10 +91,10 @@
                                    #"\s+"
                                    " "))
         "With Garden Colors")
-  (t/is (= (clojure.string/replace "rgba( calc(0 + (100 - 0) * var(--test-var)),
-                                          calc(0 + (110 - 0) * var(--test-var)),
-                                          calc(0 + (120 - 0) * var(--test-var)),
-                                          calc(1 + (0.5 - 1) * var(--test-var)))" 
+  (t/is (= (clojure.string/replace "rgba( calc(0 + (100 - 0) * --test-var),
+                                          calc(0 + (110 - 0) * --test-var),
+                                          calc(0 + (120 - 0) * --test-var),
+                                          calc(1 + (0.5 - 1) * --test-var))" 
                                    #"\s+"
                                    " ")
            (clojure.string/replace (fcss/interpolate (garden.color/hsl 0 0 0)
@@ -92,12 +103,12 @@
                                    #"\s+"
                                    " "))
         "With alpha Garden Colors")
-  (t/is (= "calc(10px + (2em - 10px) * var(--test-var))"
+  (t/is (= "calc(10px + (2em - 10px) * --test-var)"
            (fcss/interpolate (garden.unit/px 10)
                              (garden.unit/em 2)
                              "--test-var"))
         "With Garden Units")
-  (t/is (= "calc(10 + (50 - 10) * var(--test-var))"
+  (t/is (= "calc(10 + (50 - 10) * --test-var)"
            (fcss/interpolate 10
                              50
                              "--test-var"))

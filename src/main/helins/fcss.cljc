@@ -97,7 +97,7 @@
 
 
 
-(defrecord Selector [raw
+(defrecord DualName [raw
                      selector]
 
   ITemplate
@@ -118,20 +118,20 @@
 #?(:clj (do
 
 
-(defn- -defselector
+(defn- -defdualname
 
   ;;
 
-  [sym docstring f-selector]
+  [sym docstring f-raw f-selector]
 
-  (let [raw (fcss.compiler/magic (str *ns*)
-                                 (clojure.string/replace (name sym)
-                                                         #"\+$"
-                                                         "s"))]
+  (let [raw (f-raw (fcss.compiler/magic (str *ns*)
+                                        (clojure.string/replace (name sym)
+                                                                #"\+$"
+                                                                "s")))]
     (concat `(def ~sym)
             (when docstring
               [docstring])
-            [`(helins.fcss/->Selector ~raw
+            [`(helins.fcss/->DualName ~raw
                                       ~(f-selector raw))])))
 
 
@@ -148,8 +148,9 @@
 
   ([sym docstring]
 
-   (-defselector sym
+   (-defdualname sym
                  docstring
+                 identity
                  #(str \.
                        %))))
 
@@ -167,8 +168,9 @@
 
   ([sym docstring]
 
-   (-defselector sym
+   (-defdualname sym
                  docstring
+                 identity
                  #(str \#
                        %))))
 
@@ -276,7 +278,7 @@
 
   [from to css-var]
 
-  (templ "calc($from + ($to - $from) * var($var))"
+  (templ "calc($from + ($to - $from) * $var)"
          {:from from
           :to   to
           :var  css-var}))
@@ -297,9 +299,6 @@
                          :to   to})))
       (let [alpha-1   (:alpha from)
             alpha-2   (:alpha to)
-            css-var-2 (str "var("
-                           css-var
-                           ")")
             rgb-1     (garden.color/as-rgb from)
             rgb-2     (garden.color/as-rgb to)
             calc+     (templ "calc($r-1 + ($r-2 - $r-1) * $var), calc($g-1 + ($g-2 - $g-1) * $var), calc($b-1 + ($b-2 - $b-1) * $var)"
@@ -309,7 +308,7 @@
                               :r-2 (rgb-2 :red)
                               :g-1 (rgb-1 :green)
                               :g-2 (rgb-2 :green)
-                              :var css-var-2})]
+                              :var css-var})]
         (if (or alpha-1
                 alpha-2)
           (templ "rgba( $calc+, calc($a-1 + ($a-2 - $a-1) * $var))"
@@ -318,7 +317,7 @@
                   :a-2   (or alpha-2
                              1)
                   :calc+ calc+
-                  :var   css-var-2})
+                  :var   css-var})
           (str "rgb( " calc+ ")"))))
 
 
@@ -405,16 +404,21 @@
 
   ([sym]
 
-   (-defname sym
-             nil
-             "--"))
+   `(defvar ~sym
+            nil))
 
 
   ([sym docstring]
 
-   (-defname sym
-             docstring
-             "--")))
+   (-defdualname sym
+                 docstring
+                 #(str "--"
+                       %)
+                 #(format "var(%s)"
+                          %))))
+
+
+
 
 
 ))
