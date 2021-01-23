@@ -148,7 +148,12 @@
 
 (t/deftest string-ready
 
-  ""
-
   (t/is (= "helins__fcss-test__css-class"
            css-class))))
+
+
+
+(t/deftest when-dev
+
+  (t/is (= 42
+           (fcss/when-dev 42))))

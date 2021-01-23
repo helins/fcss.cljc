@@ -9,7 +9,7 @@
             [garden.types                 :as garden.type]
             [garden.util]
             #?(:clj [helins.fcss.compiler :as fcss.compiler]))
-  #?(:cljs (:require-macros [helins.fcss]))
+  #?(:cljs (:require-macros [helins.fcss :refer [when-dev]]))
   #?(:clj (:import garden.color.CSSColor
                    garden.types.CSSUnit)))
 
@@ -257,22 +257,39 @@
 
 
 
+(defmacro when-dev
+
+  ""
+
+  [& forms]
+
+  (when fcss.compiler/dev?
+    `(do
+       ~@forms)))
 
 
-(defn rule
+
+
+
+
+
+
+(defmacro rule
 
   ""
 
   ([templatable style]
 
-   [(templ templatable)
-    style])
+   (when-dev
+     `[(templ ~templatable)
+       ~style]))
 
   ([template placeholder->templatable style]
 
-   [(templ template
-           placeholder->templatable)
-    style]))
+   (when-dev
+     `[(templ ~template
+              ~placeholder->templatable)
+       ~style])))
 
 
 
@@ -532,17 +549,17 @@
 
 
 
-(defn global-style! 
+(defn ^:no-doc -global-sheet!
 
   ""
 
-  [css-string]
+  [rule+]
 
   (some-> @-v*url
           js/URL.revokeObjectURL)
   (set! (.-href @-d*element-stylesheet)
         (vreset! -v*url
-                 (js/URL.createObjectURL (js/File. [css-string]
+                 (js/URL.createObjectURL (js/File. [(garden/css rule+)]
                                                    "helins_fcss.css"
                                                    #js {"type" "text/css"}))))
   nil)
@@ -550,14 +567,17 @@
 
 
 
-(defn on-load!
+
+
+))
+
+
+
+(defmacro global-sheet!
 
   ""
 
   [rule+]
 
-  (when goog.DEBUG
-    (global-style! (garden/css rule+))))
-
-
-))
+  (when-dev
+    `(helins.fcss/-global-sheet! ~rule+)))

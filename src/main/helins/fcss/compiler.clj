@@ -462,13 +462,32 @@
 
 
 
+(def dev?
+
+  ""
+
+  (or (nil? cljs-optimization-level)
+      (not (identical? cljs-optimization-level
+                       :advanced))))
+
+
+
+
+(def release?
+
+  ""
+
+  (or (nil? cljs-optimization-level)
+      (identical? cljs-optimization-level
+                  :advanced)))
+
+
+
 (def add-magic-word+
 
   ""
 
-  (if (or (nil? cljs-optimization-level)
-          (identical? cljs-optimization-level
-                      :advanced))
+  (if release?
     #(str magic-word-begin
           %
           magic-word-end)
