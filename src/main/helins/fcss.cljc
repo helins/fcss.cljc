@@ -134,28 +134,43 @@
 #?(:clj (do
 
 
+(def ^:private dualname-body
+
+  ;;
+
+  (if (some? fcss.compiler/cljs-optimization-level)
+    (if (identical? fcss.compiler/cljs-optimization-level
+                    :advanced)
+      (fn [raw _f-templated]
+        raw)
+      (fn [raw f-templated]
+        `(let [raw# ~raw]
+           (.set helins.fcss/-registry
+                 raw#
+                 ~(f-templated raw))
+           raw#)))
+    (fn [raw f-templated]
+      `(helins.fcss/->DualName ~raw
+                               ~(f-templated raw)))))
+             
+
+
+
 (defn- -defdualname
 
   ;;
 
   [sym docstring f-raw f-templated]
 
-  (let [raw       (f-raw (fcss.compiler/magic (str *ns*)
-                                              (clojure.string/replace (name sym)
-                                                                      #"\+$"
-                                                                      "s")))
-        templated (f-templated raw)]
+  (let [raw (f-raw (fcss.compiler/magic (str *ns*)
+                                        (clojure.string/replace (name sym)
+                                                                #"\+$"
+                                                                "s")))]
     (concat `(def ~sym)
             (when docstring
               [docstring])
-            [(if (fcss.compiler/compiling-cljs?)
-               `(let [raw# ~raw]
-                  (.set helins.fcss/-registry
-                        raw#
-                        ~templated)
-                  raw#)
-               `(helins.fcss/->DualName ~raw
-                                        ~templated))])))
+            [(dualname-body raw
+                            f-templated)])))
 
 
 

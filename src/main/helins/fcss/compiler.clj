@@ -127,6 +127,7 @@
   ""
 
   ;; TODO. Ensure declaration equality by already compiling them.
+  ;; TODO. Provide genuine support for vector selectors.
 
   [{:as   ctx
     :keys [detected-name+
@@ -135,7 +136,12 @@
   (reduce (fn [ctx rule]
             (if (vector? rule)
               (let [[str-selector+
-                     decl+ ]       rule]
+                     decl+ ]       rule
+
+                    str-selector+  (cond->>
+                                     str-selector+
+                                     (vector? str-selector+)
+                                     (clojure.string/join ","))]
                 (if-some [dotted-class-name (re-matches regex-magic-dotted-class
                                                         str-selector+)]
                   (let [class-name (.substring ^String dotted-class-name
@@ -432,6 +438,17 @@
 
 
 
+(def cljs-optimization-level
+
+  ""
+
+  (some-> cljs.env/*compiler*
+          deref
+          (get-in [:options
+                   :optimizations])))
+
+
+
 
 (defn compiling-cljs?
 
@@ -445,25 +462,29 @@
 
 
 
+(def add-magic-word+
+
+  ""
+
+  (if (or (nil? cljs-optimization-level)
+          (identical? cljs-optimization-level
+                      :advanced))
+    #(str magic-word-begin
+          %
+          magic-word-end)
+    identity))
+
+
+
+
 (defn magic
 
   ""
 
   [str-ns str-sym]
 
-  (let [namespaced (namespaced-name str-ns
-                                    str-sym)]
-    (if (and cljs.env/*compiler*
-             (not (identical? (get-in @cljs.env/*compiler*
-                                      [:options
-                                       :optimizations])
-                              :advanced)))
-      namespaced
-      (str magic-word-begin
-           namespaced
-           magic-word-end))))
-
-
+  (add-magic-word+ (namespaced-name str-ns
+                                    str-sym)))
 
 
 
