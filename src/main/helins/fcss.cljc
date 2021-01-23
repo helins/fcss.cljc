@@ -58,6 +58,20 @@
 
 
 
+
+
+#?(:cljs 
+
+(def ^:no-doc -registry
+
+  ""
+
+  (js/Map.)))
+
+
+
+
+
 (extend-protocol ITemplate
 
   garden.color.CSSColor
@@ -79,19 +93,21 @@
       (str n))
 
 
-  #?(:clj   Object
+  #?(:clj  Object
      :cljs object)
 
     (-templ [o]
       (str o))
 
 
-  #?(:clj   java.lang.String
+  #?(:clj  java.lang.String
      :cljs string)
 
     (-templ [string]
-      string))
-
+      #?(:clj  string
+         :cljs (or (.get -registry
+                         string)
+                   string))))
 
 
 
@@ -122,17 +138,24 @@
 
   ;;
 
-  [sym docstring f-raw f-selector]
+  [sym docstring f-raw f-templated]
 
-  (let [raw (f-raw (fcss.compiler/magic (str *ns*)
-                                        (clojure.string/replace (name sym)
-                                                                #"\+$"
-                                                                "s")))]
+  (let [raw       (f-raw (fcss.compiler/magic (str *ns*)
+                                              (clojure.string/replace (name sym)
+                                                                      #"\+$"
+                                                                      "s")))
+        templated (f-templated raw)]
     (concat `(def ~sym)
             (when docstring
               [docstring])
-            [`(helins.fcss/->DualName ~raw
-                                      ~(f-selector raw))])))
+            [(if (fcss.compiler/compiling-cljs?)
+               `(let [raw# ~raw]
+                  (.set helins.fcss/-registry
+                        raw#
+                        ~templated)
+                  raw#)
+               `(helins.fcss/->DualName ~raw
+                                        ~templated))])))
 
 
 

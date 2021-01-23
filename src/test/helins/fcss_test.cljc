@@ -136,3 +136,14 @@
   (t/is (= "var(test-var, 42px)"
            (fcss/fallback "test-var"
                           (garden.unit/px 42)))))
+
+
+
+#?(:cljs
+
+(t/deftest string-ready
+
+  ""
+
+  (t/is (= "helins__fcss-test__css-class"
+           css-class))))

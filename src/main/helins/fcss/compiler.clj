@@ -432,6 +432,19 @@
 
 
 
+
+(defn compiling-cljs?
+
+  ""
+
+  []
+
+  (boolean (some-> cljs.env/*compiler*
+                   deref)))
+
+
+
+
 (defn magic
 
   ""
