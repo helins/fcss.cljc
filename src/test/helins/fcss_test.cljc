@@ -123,9 +123,14 @@
         "With Garden Units")
   (t/is (= "calc(10 + (50 - 10) * test-var)"
            (fcss/interpolate 10
+                             "50"
+                             "test-var"))
+        "With number")
+  (t/is (= "calc(10 + (50 - 10) * test-var)"
+           (fcss/interpolate "10"
                              50
                              "test-var"))
-        "With any values"))
+        "With string"))
 
 
 

@@ -372,7 +372,16 @@
     (interpolate [from to css-var]
       (-default-interpolate from
                             to
-                            css-var)))
+                            css-var))
+
+  #?@(:cljs
+       
+       [string
+
+          (interpolate [from to css-var]
+            (-default-interpolate from
+                                  to
+                                  css-var))]))
 
 
 
