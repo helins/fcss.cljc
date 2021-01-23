@@ -18,6 +18,13 @@
 
 (fcss/defvar css-var)
 
+(fcss/defvar css-var-2
+
+  "Docstring"
+
+  :fallback 50
+  :unit     %)
+
 
 
 (t/deftest color->hex
@@ -41,6 +48,12 @@
   (t/is (= (str "var(" css-var ")")
            (fcss/templ css-var))
         "CSS var")
+
+  (t/is (= (str "calc(1% * var("
+                css-var-2
+                ", 50))")
+           (fcss/templ css-var-2))
+        "CSS var with fallback and unit")
 
   (t/is (= "hsla(0, 0%, 0%, 1)"
            (fcss/templ (garden.color/hsla 0 0 0 1)))
@@ -80,36 +93,46 @@
 
 (t/deftest interpolate
 
-  (t/is (= (clojure.string/replace "rgb( calc(0 + (100 - 0) * --test-var),
-                                         calc(0 + (110 - 0) * --test-var),
-                                         calc(0 + (120 - 0) * --test-var))"
+  (t/is (= (clojure.string/replace "rgb( calc(0 + (100 - 0) * test-var),
+                                         calc(0 + (110 - 0) * test-var),
+                                         calc(0 + (120 - 0) * test-var))"
                                    #"\s+"
                                    " ")
            (clojure.string/replace (fcss/interpolate (garden.color/hsl 0 0 0)
                                                      (garden.color/rgb 100 110 120)
-                                                     "--test-var")
+                                                     "test-var")
                                    #"\s+"
                                    " "))
         "With Garden Colors")
-  (t/is (= (clojure.string/replace "rgba( calc(0 + (100 - 0) * --test-var),
-                                          calc(0 + (110 - 0) * --test-var),
-                                          calc(0 + (120 - 0) * --test-var),
-                                          calc(1 + (0.5 - 1) * --test-var))" 
+  (t/is (= (clojure.string/replace "rgba( calc(0 + (100 - 0) * test-var),
+                                          calc(0 + (110 - 0) * test-var),
+                                          calc(0 + (120 - 0) * test-var),
+                                          calc(1 + (0.5 - 1) * test-var))" 
                                    #"\s+"
                                    " ")
            (clojure.string/replace (fcss/interpolate (garden.color/hsl 0 0 0)
                                                      (garden.color/rgba 100 110 120 0.5)
-                                                     "--test-var")
+                                                     "test-var")
                                    #"\s+"
                                    " "))
         "With alpha Garden Colors")
-  (t/is (= "calc(10px + (2em - 10px) * --test-var)"
+  (t/is (= "calc(10px + (2em - 10px) * test-var)"
            (fcss/interpolate (garden.unit/px 10)
                              (garden.unit/em 2)
-                             "--test-var"))
+                             "test-var"))
         "With Garden Units")
-  (t/is (= "calc(10 + (50 - 10) * --test-var)"
+  (t/is (= "calc(10 + (50 - 10) * test-var)"
            (fcss/interpolate 10
                              50
-                             "--test-var"))
+                             "test-var"))
         "With any values"))
+
+
+
+(t/deftest fallback
+
+  ""
+
+  (t/is (= "var(test-var, 42px)"
+           (fcss/fallback "test-var"
+                          (garden.unit/px 42)))))

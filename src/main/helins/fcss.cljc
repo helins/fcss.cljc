@@ -402,22 +402,33 @@
 
   ""
 
-  ([sym]
+  {:arglists '([sym docstring? & option+])}
 
-   `(defvar ~sym
-            nil))
+  [sym & option+]
 
-
-  ([sym docstring]
-
-   (-defdualname sym
-                 docstring
-                 #(str "--"
+  (let [docstring  (first option+)
+        docstring? (string? docstring)]
+    (-defdualname sym
+                  (when docstring?
+                    docstring)
+                  #(str "--"
                        %)
-                 #(format "var(%s)"
-                          %))))
-
-
+                  #(let [{:keys [fallback
+                                 unit]}   (cond->
+                                            option+
+                                            docstring?
+                                            rest)
+                         string-1         (if fallback
+                                            (format "var(%s, %s)"
+                                                    %
+                                                    fallback)
+                                            (format "var(%s)"
+                                                    %))]
+                     (if unit
+                       (format "calc(1%s * %s)"
+                               (name unit)
+                               string-1)
+                       string-1)))))
 
 
 
@@ -428,6 +439,15 @@
 
 
 
+(defn fallback
+
+  ""
+
+  [css-var fallback-value]
+
+  (templ "var($var, $fallback)"
+         {:fallback fallback-value
+          :var      (str css-var)}))
 
 
 
