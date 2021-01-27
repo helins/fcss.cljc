@@ -17,7 +17,7 @@
 (clojure.tools.namespace.repl/disable-reload!)
 
 
-(def ^:dynamic *refreshing-clj?*
+(def ^:dynamic *defrul?*
 
   ;;
 
@@ -481,6 +481,38 @@
 
 
 
+
+
+(defn cljs?
+
+  ""
+
+  []
+
+  (boolean (some-> cljs.env/*compiler*
+                   deref)))
+
+
+
+(defn cljs-optimization
+
+  ""
+
+  []
+
+  (when-some [*cljs-compiler cljs.env/*compiler*]
+    (if (identical? (get-in @*cljs-compiler
+                            [:options
+                             :optimizations])
+                    :advanced)
+      :release
+      :dev)))
+
+
+
+
+
+
 (defn compiling-cljs?
 
   ""
@@ -514,18 +546,21 @@
 
 
 
+
+
+
+
 (defn add-magic-word+
 
   ""
 
   [string]
 
-  (if (and release?
-           (not *refreshing-clj?*))
+  (case (cljs-optimization)
+    :dev string
     (str magic-word-begin
          string
-         magic-word-end)
-    string))
+         magic-word-end)))
 
 
 

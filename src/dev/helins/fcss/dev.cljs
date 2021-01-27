@@ -12,10 +12,6 @@
 ;;;;;;;;;;
 
 
-(fcss/defvar bg)
-
-
-
 (defn on-load
 
   ""

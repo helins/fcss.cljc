@@ -157,19 +157,20 @@
 
   [raw f-templated]
 
-  (let [cljs-level (fcss.compiler/cljs-optimization-level-2)]
-    (if (some? cljs-level)
-      (if (identical? cljs-level
-                      :advanced)
-        raw
-        `(let [raw# ~raw]
-           (.set helins.fcss/-registry
-                 raw#
-                 ~(f-templated raw))
-           raw#)))
+  (let [cljs-optimization (fcss.compiler/cljs-optimization)]
+    (if (or fcss.compiler/*defrul?*
+            (nil? cljs-optimization))
       `(helins.fcss/->DualName ~raw
-                               ~(f-templated raw))))
-           
+                               ~(f-templated raw))
+      (case cljs-optimization
+        :dev     `(let [raw# ~raw]
+                    (.set helins.fcss/-registry
+                          raw#
+                          ~(f-templated raw))
+                    raw#)
+        :release raw))))
+
+    
 
 
 
@@ -274,22 +275,6 @@
 
 
 
-(defmacro when-dev
-
-  ""
-
-  [& forms]
-
-  (when fcss.compiler/dev?
-    `(do
-       ~@forms)))
-
-
-
-
-
-
-
 
 (def path
 
@@ -304,6 +289,9 @@
 
 
 #?(:cljs
+
+
+
 
 (defn ^:no-doc -ensure-link-node
 
@@ -329,46 +317,47 @@
 
 
 
-       
-
-
-
-
 (defmacro defrul
 
   ""
 
   [sym & rule+]
 
-  (when-dev
-    (when-not fcss.compiler/*refreshing-clj?*
-      (binding [fcss.compiler/*refreshing-clj?* true]
-        (when (fcss.compiler/compiling-cljs?)
-          (clojure.tools.namespace.repl/refresh))
-          (let [rule-2+    (vec rule+)
-                path-dir   (str path
-                                "/"
-                                *ns*)
-                path-file  (str path-dir
-                                "/"
-                                (name sym)
-                                ".css")
-                css-id     (format "fcss__%s__%s"
-                                   (str *ns*)
-                                   (name sym))
-                side-effet (if (fcss.compiler/compiling-cljs?)
-                             `(helins.fcss/-ensure-link-node ~css-id
-                                                             ~(format "./fcss/%s/%s.css"
-                                                                      (str *ns*)
-                                                                      (name sym)))
-                             nil
-                             )]
-            (.mkdirs (File. path-dir))
-            (spit path-file
-                  (garden/css (eval rule-2+)))
-            `(do
-               ~side-effet
-               (def ~sym ~rule-2+)))))))
+  (let [cljs-optimization (fcss.compiler/cljs-optimization)
+        clojure?          (nil? cljs-optimization)]
+    (when (and (not fcss.compiler/*defrul?*)
+               (or clojure?
+                   (identical? cljs-optimization
+                               :dev)))
+      (binding [fcss.compiler/*defrul?* true]
+        (when-not clojure?
+          (clojure.tools.namespace.repl/refresh)))
+        (let [rule-2+    (vec rule+)
+              path-dir   (str path
+                              "/"
+                              *ns*)
+              path-file  (str path-dir
+                              "/"
+                              (name sym)
+                              ".css")
+              css-id     (format "fcss__%s__%s"
+                                 (str *ns*)
+                                 (name sym))
+              side-effet (if (fcss.compiler/compiling-cljs?)
+                           `(helins.fcss/-ensure-link-node ~css-id
+                                                           ~(format "./fcss/%s/%s.css"
+                                                                    (str *ns*)
+                                                                    (name sym)))
+                           nil
+                           )]
+          (.mkdirs (File. path-dir))
+          (spit path-file
+                (garden/css (eval rule-2+)))
+          `(do
+             ~side-effet
+             (def ~sym ~rule-2+))))))
+
+
 
   
 
@@ -599,72 +588,3 @@
   (templ "var($var, $fallback)"
          {:fallback fallback-value
           :var      (str css-var)}))
-
-
-
-
-
-
-
-
-
-#?(:cljs (do
-
-
-(defonce ^:private -d*element-stylesheet
-
-  ;;
-
-  (delay
-    (let [element (js/document.createElement "link")
-          v*url   (volatile! nil)]
-      (set! (.-id element)
-            "helins-fcss--stylesheet")
-      (set! (.-rel element)
-            "stylesheet")
-      (.appendChild js/document.head
-                    element)
-      element)))
-
-
-
-(defonce ^:private -v*url
-
-  ;;
-
-  (volatile! nil))
-
-
-
-(defn ^:no-doc -global-sheet!
-
-  ""
-
-  [rule+]
-
-  (some-> @-v*url
-          js/URL.revokeObjectURL)
-  (set! (.-href @-d*element-stylesheet)
-        (vreset! -v*url
-                 (js/URL.createObjectURL (js/File. [(garden/css rule+)]
-                                                   "helins_fcss.css"
-                                                   #js {"type" "text/css"}))))
-  nil)
-
-
-
-
-
-
-))
-
-
-
-(defmacro global-sheet!
-
-  ""
-
-  [rule+]
-
-  (when-dev
-    `(helins.fcss/-global-sheet! ~rule+)))
