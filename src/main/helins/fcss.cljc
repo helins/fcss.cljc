@@ -8,13 +8,25 @@
             [garden.core                  :as garden]
             [garden.types                 :as garden.type]
             [garden.util]
+            
+            #?(:clj [clojure.tools.namespace.repl])
+
+            #?(:clj [cljs.env])
+
             #?(:clj [helins.fcss.compiler :as fcss.compiler]))
   #?(:cljs (:require-macros [helins.fcss :refer [when-dev]]))
-  #?(:clj (:import garden.color.CSSColor
+  #?(:clj (:import java.io.File
+                   garden.color.CSSColor
                    garden.types.CSSUnit)))
 
 
 ;;;;;;;;;;
+
+
+#?(:clj (clojure.tools.namespace.repl/disable-reload!))
+
+
+
 
 
 
@@ -131,28 +143,33 @@
 
 
 
+
+
+
+
+
 #?(:clj (do
 
 
-(def ^:private dualname-body
+(defn- -dualname-body
 
   ;;
 
-  (if (some? fcss.compiler/cljs-optimization-level)
-    (if (identical? fcss.compiler/cljs-optimization-level
-                    :advanced)
-      (fn [raw _f-templated]
-        raw)
-      (fn [raw f-templated]
+  [raw f-templated]
+
+  (let [cljs-level (fcss.compiler/cljs-optimization-level-2)]
+    (if (some? cljs-level)
+      (if (identical? cljs-level
+                      :advanced)
+        raw
         `(let [raw# ~raw]
            (.set helins.fcss/-registry
                  raw#
                  ~(f-templated raw))
            raw#)))
-    (fn [raw f-templated]
       `(helins.fcss/->DualName ~raw
-                               ~(f-templated raw)))))
-             
+                               ~(f-templated raw))))
+           
 
 
 
@@ -169,8 +186,8 @@
     (concat `(def ~sym)
             (when docstring
               [docstring])
-            [(dualname-body raw
-                            f-templated)])))
+            [(-dualname-body raw
+                             f-templated)])))
 
 
 
@@ -274,28 +291,98 @@
 
 
 
-(defmacro rule
+(def path
 
   ""
 
-  ([templatable style]
-
-   (when-dev
-     `[(templ ~templatable)
-       ~style]))
-
-  ([template placeholder->templatable style]
-
-   (when-dev
-     `[(templ ~template
-              ~placeholder->templatable)
-       ~style])))
+  "./resources/public/fcss")
 
 
 
 
 
 
+
+#?(:cljs
+
+(defn ^:no-doc -ensure-link-node
+
+  ;;
+
+  [css-id path]
+
+  (let [node (js/document.getElementById css-id)]
+    (when-not node
+      (let [node-2 (js/document.createElement "link")]
+        (set! (.-href node-2)
+              path)
+        (set! (.-id node-2)
+              css-id)
+        (set! (.-rel node-2)
+              "stylesheet")
+        (.appendChild js/document.head
+                      node-2))))))
+
+
+       
+       
+
+
+
+       
+
+
+
+
+(defmacro defrul
+
+  ""
+
+  [sym & rule+]
+
+  (when-dev
+    (when-not fcss.compiler/*refreshing-clj?*
+      (binding [fcss.compiler/*refreshing-clj?* true]
+        (when (fcss.compiler/compiling-cljs?)
+          (clojure.tools.namespace.repl/refresh))
+          (let [rule-2+    (vec rule+)
+                path-dir   (str path
+                                "/"
+                                *ns*)
+                path-file  (str path-dir
+                                "/"
+                                (name sym)
+                                ".css")
+                css-id     (format "fcss__%s__%s"
+                                   (str *ns*)
+                                   (name sym))
+                side-effet (if (fcss.compiler/compiling-cljs?)
+                             `(helins.fcss/-ensure-link-node ~css-id
+                                                             ~(format "./fcss/%s/%s.css"
+                                                                      (str *ns*)
+                                                                      (name sym)))
+                             nil
+                             )]
+            (.mkdirs (File. path-dir))
+            (spit path-file
+                  (garden/css (eval rule-2+)))
+            `(do
+               ~side-effet
+               (def ~sym ~rule-2+)))))))
+
+  
+
+
+(comment
+
+  (defrul foo
+
+    ["body"
+     {:background 'green}]
+    )
+
+
+  )
 
 
 

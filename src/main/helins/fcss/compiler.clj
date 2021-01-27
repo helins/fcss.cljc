@@ -4,12 +4,25 @@
 
   (:require [cljs.env]
             [clojure.string]
+
+            [clojure.tools.namespace.repl]
+
             [garden.core     :as garden]
             [garden.compiler]))
 
 
 ;;;;;;;;;;
 
+
+(clojure.tools.namespace.repl/disable-reload!)
+
+
+(def ^:dynamic *refreshing-clj?*
+
+  ;;
+
+  false
+  )
 
 
 
@@ -438,6 +451,11 @@
 
 
 
+
+
+
+
+
 (def cljs-optimization-level
 
   ""
@@ -447,6 +465,19 @@
           (get-in [:options
                    :optimizations])))
 
+
+
+
+(defn cljs-optimization-level-2
+
+  ""
+
+  []
+
+  (some-> cljs.env/*compiler*
+          deref
+          (get-in [:options
+                   :optimizations])))
 
 
 
@@ -483,15 +514,18 @@
 
 
 
-(def add-magic-word+
+(defn add-magic-word+
 
   ""
 
-  (if release?
-    #(str magic-word-begin
-          %
-          magic-word-end)
-    identity))
+  [string]
+
+  (if (and release?
+           (not *refreshing-clj?*))
+    (str magic-word-begin
+         string
+         magic-word-end)
+    string))
 
 
 

@@ -5,7 +5,8 @@
    :devtools         {:after-load helins.fcss.dev/on-load
                       :preloads   [shadow.remote.runtime.cljs.browser]}
    :modules          {:main {:entries [helins.fcss.dev]
-                             :init-fn helins.fcss.dev/on-load}}
+                             :init-fn helins.fcss.dev/on-load
+                             }}
    :output-dir       "resources/public/js"
    :target           :browser}
 
