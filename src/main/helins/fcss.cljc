@@ -354,9 +354,12 @@
                    (identical? cljs-optimization
                                :dev)))
       (do
-        (binding [fcss.compiler/*defrul?* true]
+        (binding [clojure.core/*e         nil
+                  fcss.compiler/*defrul?* true]
           (when-not clojure?
-            (clojure.tools.namespace.repl/refresh)))
+            (clojure.tools.namespace.repl/refresh)
+            (some-> clojure.core/*e
+                    throw))
           (let [docstring  (first arg+)
                 docstring? (string? docstring)
                 rule-2+    (mapv (fn [rule]
@@ -376,7 +379,12 @@
                                    docstring?
                                    rest))
 
-                evaled-rule+ (eval rule-2+)
+                evaled-rule+ (try
+                               (eval rule-2+)
+                               (catch Throwable e
+                                 (throw (ex-info "Unable to eval CSS rules, is it written in propre CLJC?"
+                                                 {:helins.css/rule+ rule-2+}
+                                                 e))))
 
                 path-dir   (str path
                                 "/"
@@ -395,16 +403,27 @@
                                                                       (name sym)))
                              nil
                              )]
-            (.mkdirs (File. path-dir))
-            (spit path-file
-                  (garden/css evaled-rule+))
+            (try
+              (.mkdirs (File. path-dir))
+              (catch Throwable e
+                (throw (ex-info "Unable to create directory for dev CSS files"
+                                {:helins.css.dev/path path-dir}
+                                e))))
+            (try
+              (spit path-file
+                    (garden/css evaled-rule+))
+              (catch Throwable e
+                (throw (ex-info "Unable to write CSS dev file"
+                                {:helins.css.dev/path path-file}
+                                e))))
             `(do
                ~side-effet
                ~(concat `(def ~sym)
                         (when docstring?
                           [docstring])
-                        [`(quote ~evaled-rule+)]))))
+                        [`(quote ~evaled-rule+)])))))
       `(def ~sym nil))))
+
 
 
 
