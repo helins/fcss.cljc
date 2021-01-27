@@ -11,6 +11,8 @@
 ;;;;;;;;;;
 
 
+(fcss/defclass klass)
+
 (fcss/defvar bg)
 
 
@@ -20,4 +22,7 @@
   ["&"
    "body"
    {:background (fcss/templ bg)
-    bg          fcss.dev.css-2/color}])
+    bg          fcss.dev.css-2/color}]
+
+  [klass
+   {:color 'red}])

@@ -153,7 +153,17 @@
 
 
 
-(t/deftest when-dev
 
-  (t/is (= 42
-           (fcss/when-dev 42))))
+(fcss/defrul rul-test
+
+  [css-class
+   {:background 'green}])
+
+
+
+(t/deftest defrul
+
+  (t/is (= [[(str \.
+                  css-class)
+             {:background 'green}]]
+           rul-test)))

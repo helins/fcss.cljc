@@ -326,57 +326,59 @@
 
   (let [cljs-optimization (fcss.compiler/cljs-optimization)
         clojure?          (nil? cljs-optimization)]
-    (when (and (not fcss.compiler/*defrul?*)
+    (if (and (not fcss.compiler/*defrul?*)
                (or clojure?
                    (identical? cljs-optimization
                                :dev)))
-      (binding [fcss.compiler/*defrul?* true]
-        (when-not clojure?
-          (clojure.tools.namespace.repl/refresh)))
-        (let [docstring  (first arg+)
-              docstring? (string? docstring)
-              rule-2+    (mapv (fn [rule]
-                                 (case (count rule)
-                                   2 (let [[templatable
-                                            decl+]      rule]
-                                       `[(helins.fcss/templ ~templatable)
-                                         ~decl+])
-                                   3 (let [[template
-                                            placeholder->templatable
-                                            decl+]                   rule]
-                                       `[(helins.fcss/templ ~template
-                                                            ~placeholder->templatable)
-                                         ~decl+])))
-                               (cond->
-                                 arg+
-                                 docstring?
-                                 rest))
-              path-dir   (str path
-                              "/"
-                              *ns*)
-              path-file  (str path-dir
-                              "/"
-                              (name sym)
-                              ".css")
-              css-id     (format "fcss__%s__%s"
-                                 (str *ns*)
-                                 (name sym))
-              side-effet (if (fcss.compiler/compiling-cljs?)
-                           `(helins.fcss/-ensure-link-node ~css-id
-                                                           ~(format "./fcss/%s/%s.css"
-                                                                    (str *ns*)
-                                                                    (name sym)))
-                           nil
-                           )]
-          (.mkdirs (File. path-dir))
-          (spit path-file
-                (garden/css (eval rule-2+)))
-          `(do
-             ~side-effet
-             ~(concat `(def ~sym)
-                      (when docstring?
-                        [docstring])
-                      [rule-2+]))))))
+      (do
+        (binding [fcss.compiler/*defrul?* true]
+          (when-not clojure?
+            (clojure.tools.namespace.repl/refresh)))
+          (let [docstring  (first arg+)
+                docstring? (string? docstring)
+                rule-2+    (mapv (fn [rule]
+                                   (case (count rule)
+                                     2 (let [[templatable
+                                              decl+]      rule]
+                                         `[(helins.fcss/templ ~templatable)
+                                           ~decl+])
+                                     3 (let [[template
+                                              placeholder->templatable
+                                              decl+]                   rule]
+                                         `[(helins.fcss/templ ~template
+                                                              ~placeholder->templatable)
+                                           ~decl+])))
+                                 (cond->
+                                   arg+
+                                   docstring?
+                                   rest))
+                path-dir   (str path
+                                "/"
+                                *ns*)
+                path-file  (str path-dir
+                                "/"
+                                (name sym)
+                                ".css")
+                css-id     (format "fcss__%s__%s"
+                                   (str *ns*)
+                                   (name sym))
+                side-effet (if (fcss.compiler/compiling-cljs?)
+                             `(helins.fcss/-ensure-link-node ~css-id
+                                                             ~(format "./fcss/%s/%s.css"
+                                                                      (str *ns*)
+                                                                      (name sym)))
+                             nil
+                             )]
+            (.mkdirs (File. path-dir))
+            (spit path-file
+                  (garden/css (eval rule-2+)))
+            `(do
+               ~side-effet
+               ~(concat `(def ~sym)
+                        (when docstring?
+                          [docstring])
+                        [rule-2+]))))
+      `(def ~sym nil))))
 
 
 

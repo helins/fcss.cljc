@@ -8,6 +8,7 @@
             [helins.fcss.compiler :as fcss.compiler]))
 
 
+(comment
 ;;;;;;;;;;
 
 (fcss/defclass cl-0)
@@ -228,3 +229,6 @@
            (fcss.compiler/munge-var+ {:prefix "P"
                                       :seed   0}
                                      ["a" "b"]))))
+
+
+)
