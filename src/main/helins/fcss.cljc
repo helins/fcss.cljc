@@ -287,6 +287,29 @@
 
 
 
+(defn rule
+
+  ""
+
+  ([templatable style]
+
+   [(templ templatable)
+    style])
+
+
+  ([template placeholder->templatable style]
+
+    [(templ template
+            placeholder->templatable)
+    style]))
+
+
+
+
+
+
+
+
 #?(:cljs
 
 
