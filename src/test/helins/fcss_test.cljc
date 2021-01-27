@@ -166,4 +166,4 @@
   (t/is (= [[(str \.
                   css-class)
              {:background 'green}]]
-           rul-test)))
+           (fcss/rule-inspect rul-test))))

@@ -335,13 +335,54 @@
 
 
        
+
+
+
+#?(:clj
+   
+(def ^:private -*rule+
+
+  ;;
+
+  (atom {})))
        
+
+
+(defmacro rule-inspect
+
+  ""
+
+  ([]
+
+   `(quote ~(deref -*rule+)))
+
+
+  ([sym]
+
+   `(quote ~(let [rule+   @-*rule+
+                  var-sym (resolve &env
+                                   sym)]
+              (if var-sym
+                (let [sym-2 @var-sym]
+                  (get-in rule+
+                          [(symbol (namespace sym-2))
+                           (symbol (name sym-2))]))
+                (or (get rule+
+                         sym)
+                    (get rule+
+                         (some-> (get (ns-aliases *ns*)
+                                      sym)
+                                 str
+                                 symbol))))))))
+
 
 
 
 (defmacro defrul
 
   ""
+
+  ;; TODO. Ensures def to nil in CLJS advanced.
 
   {:arglists '([sym docstring? & rule+])}
 
@@ -416,13 +457,20 @@
                 (throw (ex-info "Unable to write CSS dev file"
                                 {:helins.css.dev/path path-file}
                                 e))))
+            (swap! -*rule+
+                   assoc-in
+                   [(symbol (str *ns*))
+                    sym]
+                   evaled-rule+)
             `(do
                ~side-effet
                ~(concat `(def ~sym)
                         (when docstring?
                           [docstring])
-                        [`(quote ~evaled-rule+)])))))
-      `(def ~sym nil))))
+                        [`(quote ~(symbol (str *ns*)
+                                     (name sym)))])))))
+      `(def ~sym (quote ~(symbol (str *ns*)
+                                 (name sym)))))))
 
 
 

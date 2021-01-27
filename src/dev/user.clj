@@ -2,8 +2,9 @@
 
   "For daydreaming at the REPL."
 
-  (:require [helins.fcss :as fcss]))
-
+  (:require [helins.fcss         :as fcss]
+            [helins.fcss.dev.css :as fcss.dev.css]))
+        
 
 ;;;;;;;;;;
 
