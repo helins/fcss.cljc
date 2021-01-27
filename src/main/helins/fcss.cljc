@@ -173,7 +173,6 @@
     
 
 
-
 (defn- -defdualname
 
   ;;
@@ -321,7 +320,9 @@
 
   ""
 
-  [sym & rule+]
+  {:arglists '([sym docstring? & rule+])}
+
+  [sym & arg+]
 
   (let [cljs-optimization (fcss.compiler/cljs-optimization)
         clojure?          (nil? cljs-optimization)]
@@ -332,7 +333,9 @@
       (binding [fcss.compiler/*defrul?* true]
         (when-not clojure?
           (clojure.tools.namespace.repl/refresh)))
-        (let [rule-2+    (mapv (fn [rule]
+        (let [docstring  (first arg+)
+              docstring? (string? docstring)
+              rule-2+    (mapv (fn [rule]
                                  (case (count rule)
                                    2 (let [[templatable
                                             decl+]      rule]
@@ -344,7 +347,10 @@
                                        `[(helins.fcss/templ ~template
                                                             ~placeholder->templatable)
                                          ~decl+])))
-                               rule+)
+                               (cond->
+                                 arg+
+                                 docstring?
+                                 rest))
               path-dir   (str path
                               "/"
                               *ns*)
@@ -367,7 +373,10 @@
                 (garden/css (eval rule-2+)))
           `(do
              ~side-effet
-             (def ~sym ~rule-2+))))))
+             ~(concat `(def ~sym)
+                      (when docstring?
+                        [docstring])
+                      [rule-2+]))))))
 
 
 
