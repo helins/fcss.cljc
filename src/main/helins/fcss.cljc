@@ -375,6 +375,9 @@
                                    arg+
                                    docstring?
                                    rest))
+
+                evaled-rule+ (eval rule-2+)
+
                 path-dir   (str path
                                 "/"
                                 *ns*)
@@ -394,13 +397,13 @@
                              )]
             (.mkdirs (File. path-dir))
             (spit path-file
-                  (garden/css (eval rule-2+)))
+                  (garden/css evaled-rule+))
             `(do
                ~side-effet
                ~(concat `(def ~sym)
                         (when docstring?
                           [docstring])
-                        [rule-2+]))))
+                        [`(quote ~evaled-rule+)]))))
       `(def ~sym nil))))
 
 
