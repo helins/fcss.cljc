@@ -14,7 +14,7 @@
             #?(:clj [cljs.env])
 
             #?(:clj [helins.fcss.compiler :as fcss.compiler]))
-  #?(:cljs (:require-macros [helins.fcss :refer [when-dev]]))
+  #?(:cljs (:require-macros [helins.fcss]))
   #?(:clj (:import java.io.File
                    garden.color.CSSColor
                    garden.types.CSSUnit)))
@@ -332,7 +332,19 @@
       (binding [fcss.compiler/*defrul?* true]
         (when-not clojure?
           (clojure.tools.namespace.repl/refresh)))
-        (let [rule-2+    (vec rule+)
+        (let [rule-2+    (mapv (fn [rule]
+                                 (case (count rule)
+                                   2 (let [[templatable
+                                            decl+]      rule]
+                                       `[(helins.fcss/templ ~templatable)
+                                         ~decl+])
+                                   3 (let [[template
+                                            placeholder->templatable
+                                            decl+]                   rule]
+                                       `[(helins.fcss/templ ~template
+                                                            ~placeholder->templatable)
+                                         ~decl+])))
+                               rule+)
               path-dir   (str path
                               "/"
                               *ns*)

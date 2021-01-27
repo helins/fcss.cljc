@@ -17,6 +17,7 @@
 
 (fcss/defrul rule+
 
-  ["body"
+  ["&"
+   "body"
    {:background (fcss/templ bg)
     bg          fcss.dev.css-2/color}])
