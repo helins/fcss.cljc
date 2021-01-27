@@ -452,7 +452,14 @@
                                 e))))
             (try
               (spit path-file
-                    (garden/css evaled-rule+))
+                    (cond->>
+                      (garden/css evaled-rule+)
+                      docstring?
+                      (str "/* "
+                           docstring
+                           " */"
+                           \newline
+                           \newline)))
               (catch Throwable e
                 (throw (ex-info "Unable to write CSS dev file"
                                 {:helins.css.dev/path path-file}

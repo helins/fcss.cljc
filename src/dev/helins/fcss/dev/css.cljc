@@ -19,6 +19,11 @@
 
 (fcss/defrul rule+
 
+  "Docstring test.
+
+   Multi-line.
+   Foo bar"
+
   ["&"
    "body"
    {:background (fcss/templ bg)
