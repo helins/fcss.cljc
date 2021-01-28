@@ -156,8 +156,9 @@
 
 (fcss/defrul rul-test
 
-  [css-class
-   {:background 'green}])
+  (let [bg 'green]
+    [css-class
+     {:background bg}]))
 
 
 

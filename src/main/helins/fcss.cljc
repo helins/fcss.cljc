@@ -235,6 +235,95 @@
 
 
 
+
+
+#?(:clj (do
+
+
+
+(defn- -defname
+
+  ;;
+
+  [sym docstring prefix]
+
+  (concat `(def ~sym)
+          (when docstring
+            [docstring])
+          [(str prefix
+                (fcss.compiler/magic (str *ns*)
+                                     (name sym)))]))
+
+
+
+
+
+
+
+(defmacro defname
+
+  ""
+
+  ([sym]
+
+   (-defname sym
+             nil
+             nil))
+
+
+  ([sym docstring]
+
+   (-defname sym
+             docstring
+             nil)))
+
+
+
+(defmacro defvar
+
+  ""
+
+  {:arglists '([sym docstring? & option+])}
+
+  [sym & option+]
+
+  (let [docstring  (first option+)
+        docstring? (string? docstring)]
+    (-defdualname sym
+                  (when docstring?
+                    docstring)
+                  #(str "--"
+                       %)
+                  #(let [{:keys [fallback
+                                 unit]}   (cond->
+                                            option+
+                                            docstring?
+                                            rest)
+                         string-1         (if fallback
+                                            (format "var(%s, %s)"
+                                                    %
+                                                    fallback)
+                                            (format "var(%s)"
+                                                    %))]
+                     (if unit
+                       (format "calc(1%s * %s)"
+                               (name unit)
+                               string-1)
+                       string-1)))))
+
+
+
+))
+
+
+
+
+
+
+
+
+
+
 (defn templ
 
   ""
@@ -403,30 +492,29 @@
                     throw))
           (let [docstring  (first arg+)
                 docstring? (string? docstring)
-                rule-2+    (mapv (fn [rule]
-                                   (case (count rule)
-                                     2 (let [[templatable
-                                              decl+]      rule]
-                                         `[(helins.fcss/templ ~templatable)
-                                           ~decl+])
-                                     3 (let [[template
-                                              placeholder->templatable
-                                              decl+]                   rule]
-                                         `[(helins.fcss/templ ~template
-                                                              ~placeholder->templatable)
-                                           ~decl+])))
-                                 (cond->
+                rule+      (vec (cond->
                                    arg+
                                    docstring?
                                    rest))
-
-                evaled-rule+ (try
-                               (eval rule-2+)
-                               (catch Throwable e
-                                 (throw (ex-info "Unable to eval CSS rules, is it written in propre CLJC?"
-                                                 {:helins.css/rule+ rule-2+}
-                                                 e))))
-
+                rule-2+    (try
+                              (eval rule+)
+                              (catch Throwable e
+                                (throw (ex-info "Unable to eval CSS rules, are they written in propre CLJC?"
+                                                {:helins.css/rule+ rule+}
+                                                e))))
+                rule-3+    (mapv (fn [rule]
+                                   (case (count rule)
+                                     2 (let [[templatable
+                                              decl+]      rule]
+                                         [(templ templatable)
+                                          decl+])
+                                     3 (let [[template
+                                              placeholder->templatable
+                                              decl+]                   rule]
+                                         [(templ template
+                                                 placeholder->templatable)
+                                          decl+])))
+                                 rule-2+)
                 path-dir   (str path
                                 "/"
                                 *ns*)
@@ -453,7 +541,7 @@
             (try
               (spit path-file
                     (cond->>
-                      (garden/css evaled-rule+)
+                      (garden/css rule-3+)
                       docstring?
                       (str "/* "
                            docstring
@@ -468,7 +556,7 @@
                    assoc-in
                    [(symbol (str *ns*))
                     sym]
-                   evaled-rule+)
+                   rule-3+)
             `(do
                ~side-effet
                ~(concat `(def ~sym)
@@ -482,21 +570,7 @@
 
 
 
-  
-
-
-(comment
-
-  (defrul foo
-
-    ["body"
-     {:background 'green}]
-    )
-
-
-  )
-
-
+ 
 
 
 
@@ -619,88 +693,6 @@
 
 
 
-#?(:clj (do
-
-
-
-(defn- -defname
-
-  ;;
-
-  [sym docstring prefix]
-
-  (concat `(def ~sym)
-          (when docstring
-            [docstring])
-          [(str prefix
-                (fcss.compiler/magic (str *ns*)
-                                     (name sym)))]))
-
-
-
-
-
-
-
-(defmacro defname
-
-  ""
-
-  ([sym]
-
-   (-defname sym
-             nil
-             nil))
-
-
-  ([sym docstring]
-
-   (-defname sym
-             docstring
-             nil)))
-
-
-
-(defmacro defvar
-
-  ""
-
-  {:arglists '([sym docstring? & option+])}
-
-  [sym & option+]
-
-  (let [docstring  (first option+)
-        docstring? (string? docstring)]
-    (-defdualname sym
-                  (when docstring?
-                    docstring)
-                  #(str "--"
-                       %)
-                  #(let [{:keys [fallback
-                                 unit]}   (cond->
-                                            option+
-                                            docstring?
-                                            rest)
-                         string-1         (if fallback
-                                            (format "var(%s, %s)"
-                                                    %
-                                                    fallback)
-                                            (format "var(%s)"
-                                                    %))]
-                     (if unit
-                       (format "calc(1%s * %s)"
-                               (name unit)
-                               string-1)
-                       string-1)))))
-
-
-
-))
-
-
-
-
-
 
 (defn fallback
 
@@ -711,3 +703,21 @@
   (templ "var($var, $fallback)"
          {:fallback fallback-value
           :var      (str css-var)}))
+
+
+
+
+
+#?(:clj
+
+
+(defn -main
+
+  ""
+
+  [& arg]
+  ))
+
+
+
+

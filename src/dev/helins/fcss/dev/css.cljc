@@ -29,5 +29,6 @@
    {:background (fcss/templ bg)
     bg          fcss.dev.css-2/color}]
 
-  [klass
-   {:color 'red}])
+  (let [color 'red]
+    [klass
+     {:color color}]))
