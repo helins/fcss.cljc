@@ -10,7 +10,8 @@
             [clojure.tools.namespace.repl]
 
             [garden.core     :as garden]
-            [garden.compiler]))
+            [garden.compiler])
+  (:import java.io.File))
 
 
 ;;;;;;;;;;
@@ -41,16 +42,6 @@
   ""
 
   "__MINCSS_MAGIC_WORD_END__")
-
-
-
-(def default-prefix
-
-  ""
-
-  "_fcss")
-
-
 
 
 
@@ -229,51 +220,47 @@
 
   ""
 
-  [{:as   ctx
-    :keys [class+->style
-           prefix]}]
+  [{:as        ctx
+    :keys      [class+->style]
+    :fcss/keys [prefix]}]
 
-  (let [prefix-2 (or prefix
-                     default-prefix)]
-    (reduce-kv (fn [ctx-2 class+ style]
-                 (let [seed-2       (inc (ctx-2 :seed))
-                       munged-class (str prefix-2
-                                         seed-2)
-                       ctx-3        (-> ctx-2
-                                        (update :original->munged+
-                                                (fn [original->munged+]
-                                                  (reduce #(update %1
-                                                                   %2
-                                                                   (fnil conj
-                                                                         [])
-                                                                   munged-class)
-                                                          original->munged+
-                                                          class+)))
-                                        (update :rule+
-                                                conj
-                                                [(str \.
-                                                      munged-class)
-                                                 style])
-                                        (assoc :seed
-                                               seed-2))
-                       unique-class     (when-not (next class+)
-                                          (first class+))]
-                   (cond->
-                     ctx-3
-                     unique-class
-                     (update :class->unique-munged
-                             assoc
-                             unique-class
-                             munged-class))))
-               (-> ctx
-                   (assoc :class->unique-munged {}
-                          :original->munged+    {}
-                          :prefix               prefix-2)
-
-                   (update :seed
-                           #(or %
-                                0)))
-               class+->style)))
+  (reduce-kv (fn [ctx-2 class+ style]
+               (let [seed-2       (inc (ctx-2 :seed))
+                     munged-class (str prefix
+                                       seed-2)
+                     ctx-3        (-> ctx-2
+                                      (update :original->munged+
+                                              (fn [original->munged+]
+                                                (reduce #(update %1
+                                                                 %2
+                                                                 (fnil conj
+                                                                       [])
+                                                                 munged-class)
+                                                        original->munged+
+                                                        class+)))
+                                      (update :rule+
+                                              conj
+                                              [(str \.
+                                                    munged-class)
+                                               style])
+                                      (assoc :seed
+                                             seed-2))
+                     unique-class     (when-not (next class+)
+                                        (first class+))]
+                 (cond->
+                   ctx-3
+                   unique-class
+                   (update :class->unique-munged
+                           assoc
+                           unique-class
+                           munged-class))))
+             (-> ctx
+                 (assoc :class->unique-munged {}
+                        :original->munged+    {})
+                 (update :seed
+                         #(or %
+                              0)))
+             class+->style))
 
 
 
@@ -311,7 +298,7 @@
                 path-unique)
       ctx
       (let [seed-2       (inc (ctx :seed))
-            munged-class (str (ctx :prefix)
+            munged-class (str (ctx :fcss/prefix)
                               seed-2)]
         (-> ctx
             (assoc :seed
@@ -365,7 +352,7 @@
 
   [ctx var+]
 
-  (let [{:keys [prefix]} ctx]
+  (let [{:fcss/keys [prefix]} ctx]
     (reduce (fn [ctx-2 magic-var]
               (let [seed-2 (inc (ctx-2 :seed))]
                 (-> ctx-2
@@ -400,10 +387,12 @@
 
   ""
 
-  [{:as   ctx
-    :keys [output
-           prefix
-           var->munged]}]
+  ;; TODO. Warn that a declaration refers to something that is not used in code (eg. css var not defined in advanced build).
+
+  [{:as        ctx
+    :keys      [output
+                var->munged]
+    :fcss/keys [prefix]}]
 
   (let [v*ctx    (volatile! ctx)
         output-2 (clojure.string/replace output
@@ -636,15 +625,32 @@
 
 
 
+
+(defn file!
+
+  ""
+
+  ^File
+
+  [path]
+
+  (let [file (File. path)]
+    (some-> (.getParentFile file)
+            .mkdirs)
+    file))
+
+
+
+
 (defn process!
 
   ""
 
-  [{:as   ctx
-    :keys [path-cljs+
-           report]}]
+  [{:as             ctx
+    :fcss.path/keys [cljs+
+                     report]}]
 
-  (let [opened-file+              (open-file+ path-cljs+)
+  (let [opened-file+              (open-file+ cljs+)
         {:as   ctx-2
          :keys [original->munged+
                 rule+]}           (-> (atomize-rule+ (assoc ctx
@@ -663,9 +669,7 @@
                                       rename-in-output)]
     (when report
       (clojure.pprint/pprint ctx-2
-                             (clojure.java.io/writer report)))
-                             
-      
+                             (clojure.java.io/writer (file! report))))
     (write-file+ opened-file+
                  ctx-2)
     ctx-2))
@@ -683,21 +687,37 @@
 
 
 
-
-(defn -main
+(def default
 
   ""
 
-  [& [main-namespace]]
+  {:fcss/operation   :release
+   :fcss/prefix      "_-_"
+   :fcss.path/cljs+  ["resources/public/js/main.js"]
+   :fcss.path/output "resources/css/main.css"
+   :fcss.path/report "resources/report/fcss.edn"
+   })
 
-  (require (symbol main-namespace))
-  (spit "resources/css/main.css"
-        (let [rule+ (vec (apply concat
-                                (mapcat vals
-                                        (vals @*rule+))))]
-          (-> (process! {:path-cljs+         ["resources/public/js/main.js"]
-                         :prefix             "_fcss"
-                         :report             "resources/fcss_report.edn"
-                         :fcss.rule/initial+ rule+
+
+
+(defn main
+
+  ""
+
+  [arg+]
+
+  (let [{:as         arg-2+
+         ns-entry    :fcss/entry
+         path-output :fcss.path/output} (merge default
+                                               arg+)]
+    (require ns-entry)
+    (let [rule+  (vec (apply concat
+                             (mapcat vals
+                                     (vals @*rule+))))
+          ctx    (merge arg-2+
+                        {:fcss.rule/initial+ rule+
                          :rule+              rule+})
-              :output))))
+          ctx-2  (process! ctx)]
+      (spit (file! path-output)
+            (ctx-2 :output))
+      ctx-2)))

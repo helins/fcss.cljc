@@ -222,10 +222,10 @@
 
 (t/deftest munge-var+
 
-  (t/is (= {:prefix      "P"
+  (t/is (= {:fcss/prefix "P"
             :seed        2
             :var->munged {"a" "--P1"
                           "b" "--P2"}}
-           (fcss.compiler/munge-var+ {:prefix "P"
-                                      :seed   0}
+           (fcss.compiler/munge-var+ {:fcss/prefix "P"
+                                      :seed        0}
                                      ["a" "b"]))))

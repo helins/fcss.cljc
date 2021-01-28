@@ -27,6 +27,8 @@ node_modules/
 out
 package.json
 package-lock.json
+
+resources/*
 resources/public/*
 !resources/public/index.html
 resources/chui/*
