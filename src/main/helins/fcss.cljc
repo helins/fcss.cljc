@@ -2,7 +2,8 @@
 
   ""
 
-  (:require [clojure.string]
+  (:require #?(:clj [clojure.edn])
+            [clojure.string]
             [garden.color]
             [garden.compiler]
             [garden.core                  :as garden]
@@ -382,6 +383,8 @@
 
   ""
 
+  ;; TODO. Smart templating akin to `defrul`
+
   ([templatable style]
 
    [(templ templatable)
@@ -429,28 +432,18 @@
 
 
 
-#?(:clj
-   
-(def ^:private -*rule+
-
-  ;;
-
-  (atom {})))
-
-
-
 (defmacro rule-inspect
 
   ""
 
   ([]
 
-   `(quote ~(deref -*rule+)))
+   `(quote ~(deref fcss.compiler/*rule+)))
 
 
   ([sym]
 
-   `(quote ~(let [rule+   @-*rule+
+   `(quote ~(let [rule+   @fcss.compiler/*rule+
                   var-sym (resolve &env
                                    sym)]
               (if var-sym
@@ -579,7 +572,7 @@
                 (throw (ex-info "Unable to write CSS dev file"
                                 {:helins.css.dev/path path-file}
                                 e))))
-            (swap! -*rule+
+            (swap! fcss.compiler/*rule+
                    assoc-in
                    [(symbol (str *ns*))
                     sym]
@@ -734,17 +727,10 @@
 
 
 
-
-#?(:clj
-
-
-(defn -main
+(defmacro load-edn
 
   ""
 
-  [& arg]
-  ))
+  [path]
 
-
-
-
+  `(quote ~(clojure.edn/read-string (slurp path))))

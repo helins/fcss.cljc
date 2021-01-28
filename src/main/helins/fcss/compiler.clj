@@ -3,6 +3,8 @@
   ""
 
   (:require [cljs.env]
+            [clojure.java.io]
+            [clojure.pprint]
             [clojure.string]
 
             [clojure.tools.namespace.repl]
@@ -615,6 +617,8 @@
 
   ""
 
+  ;; TODO. Warn about used names which does not have any rules.
+
   [opened-file+ {:keys [class->munged
                         var->munged]}]
   
@@ -623,10 +627,11 @@
                 (clojure.string/replace content
                                         regex-magic
                                         (fn [magic-name]
-                                          ((if (css-var? magic-name)
-                                             var->munged
-                                             class->munged)
-                                           magic-name)))))
+                                          (or ((if (css-var? magic-name)
+                                                 var->munged
+                                                 class->munged)
+                                               magic-name)
+                                              "")))))
         opened-file+))
 
 
@@ -636,10 +641,11 @@
   ""
 
   [{:as   ctx
-    :keys [path-cljs+]}]
+    :keys [path-cljs+
+           report]}]
 
   (let [opened-file+              (open-file+ path-cljs+)
-        {:as   ctx
+        {:as   ctx-2
          :keys [original->munged+
                 rule+]}           (-> (atomize-rule+ (assoc ctx
                                                             :detected-name+
@@ -655,6 +661,43 @@
                                                                 (vals opened-file+))))
                                       compile-rule+
                                       rename-in-output)]
+    (when report
+      (clojure.pprint/pprint ctx-2
+                             (clojure.java.io/writer report)))
+                             
+      
     (write-file+ opened-file+
-                 ctx)
-    ctx))
+                 ctx-2)
+    ctx-2))
+
+
+
+
+
+(def *rule+
+
+  ;;
+
+  (atom {}))
+
+
+
+
+
+(defn -main
+
+  ""
+
+  [& [main-namespace]]
+
+  (require (symbol main-namespace))
+  (spit "resources/css/main.css"
+        (let [rule+ (vec (apply concat
+                                (mapcat vals
+                                        (vals @*rule+))))]
+          (-> (process! {:path-cljs+         ["resources/public/js/main.js"]
+                         :prefix             "_fcss"
+                         :report             "resources/fcss_report.edn"
+                         :fcss.rule/initial+ rule+
+                         :rule+              rule+})
+              :output))))
