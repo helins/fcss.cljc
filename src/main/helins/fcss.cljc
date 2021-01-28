@@ -183,7 +183,9 @@
                                         (clojure.string/replace (name sym)
                                                                 #"\+$"
                                                                 "s")))]
-    (concat `(def ~sym)
+    
+     (concat `(def ~(with-meta sym
+                              {:foo :bar}))
             (when docstring
               [docstring])
             [(-dualname-body raw
@@ -434,7 +436,7 @@
   ;;
 
   (atom {})))
-       
+
 
 
 (defmacro rule-inspect
@@ -466,12 +468,35 @@
 
 
 
+#?(:clj
+
+
+(defn- -templ-decl+
+
+  ""
+
+  [env decl+]
+
+  (reduce-kv #(assoc %1
+                     (cond->
+                       %2
+                       (instance? DualName
+                                  %2)
+                       str)
+                     (cond->
+                       %3
+                       (instance? DualName
+                                  %3)
+                       templ))
+             {}
+             decl+)))
+
 
 (defmacro defrul
 
   ""
 
-  ;; TODO. Ensures def to nil in CLJS advanced.
+  ;; TODO. Ensures def to nil in advanced CLJS.
 
   {:arglists '([sym docstring? & rule+])}
 
@@ -507,13 +532,15 @@
                                      2 (let [[templatable
                                               decl+]      rule]
                                          [(templ templatable)
-                                          decl+])
+                                          (-templ-decl+ &env
+                                                        decl+)])
                                      3 (let [[template
                                               placeholder->templatable
                                               decl+]                   rule]
                                          [(templ template
                                                  placeholder->templatable)
-                                          decl+])))
+                                          (-templ-decl+ &env
+                                                        decl+)])))
                                  rule-2+)
                 path-dir   (str path
                                 "/"

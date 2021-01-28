@@ -14,20 +14,28 @@
 (fcss/defclass klass)
 
 (fcss/defvar bg)
+
+(fcss/defvar length
+
+  :unit %)
  
  
 
 (fcss/defrul rule+
 
-  "Docstring test.
+  ;"Docstring test.
 
-   Multi-line.
-   Foo bar"
+  ; Multi-line.
+  ; Foo bar"
 
   ["&"
    "body"
-   {:background (fcss/templ bg)
-    bg          fcss.dev.css-2/color}]
+   {:background bg
+    :left       (fcss/templ "calc(1px * var(&, 42))"
+                            (str length))
+    :width      length
+    bg          fcss.dev.css-2/color
+    length      50}]
 
   (let [color 'red]
     [klass
