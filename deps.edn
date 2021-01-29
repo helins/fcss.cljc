@@ -1,5 +1,5 @@
 {:deps
- {;com.taoensso/timbre         {:mvn/version "5.1.0"}
+ {clj-commons/fs              {:mvn/version "1.6.307"}
   garden/garden               {:mvn/version "1.3.10"}
   org.clojure/clojure         {:mvn/version "1.10.1"}
   org.clojure/clojurescript   {:mvn/version "1.10.764"}

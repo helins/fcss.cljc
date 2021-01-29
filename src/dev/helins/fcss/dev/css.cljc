@@ -4,7 +4,8 @@
 
   {:author "Adam Helinski"}
 
-  (:require [helins.fcss           :as fcss]
+  (:require [garden.units          :as css.unit]
+            [helins.fcss           :as fcss]
             [helins.fcss.dev.css-2 :as fcss.dev.css-2]))
 
 
@@ -33,6 +34,7 @@
    {:background bg
     :left       (fcss/templ "calc(1px * var(&, 42))"
                             (str length))
+    :top        (css.unit/percent 50)
     :width      length
     bg          fcss.dev.css-2/color
     length      50}]

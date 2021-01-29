@@ -17,15 +17,20 @@
 ;;;;;;;;;;
 
 
-(clojure.tools.namespace.repl/disable-reload!)
-
-
 (def ^:dynamic *defrul?*
 
-  ;;
+  ""
 
-  false
-  )
+  false)
+
+
+
+(def ^:dynamic *clojure?*
+
+  ""
+
+  false)
+
 
 
 

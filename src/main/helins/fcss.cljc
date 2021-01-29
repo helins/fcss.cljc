@@ -14,8 +14,9 @@
 
             #?(:clj [cljs.env])
 
+            #?(:clj [me.raynes.fs :as fs])
             #?(:clj [helins.fcss.compiler :as fcss.compiler]))
-  #?(:cljs (:require-macros [helins.fcss]))
+  #?(:cljs (:require-macros [helins.fcss :refer [clear!]]))
   #?(:clj (:import java.io.File
                    garden.color.CSSColor
                    garden.types.CSSUnit)))
@@ -24,9 +25,21 @@
 ;;;;;;;;;;
 
 
-#?(:clj (clojure.tools.namespace.repl/disable-reload!))
+
+#?(:clj
+   
+(defn- -disable-reload!
+  
+  ""
+  
+  []
+  
+  (clojure.tools.namespace.repl/disable-reload!)
+  (clojure.tools.namespace.repl/disable-reload! (find-ns 'helins.fcss.compiler))))
 
 
+
+#?(:clj (-disable-reload!))
 
 
 
@@ -160,6 +173,7 @@
 
   (let [cljs-optimization (fcss.compiler/cljs-optimization)]
     (if (or fcss.compiler/*defrul?*
+            fcss.compiler/*clojure?*
             (nil? cljs-optimization))
       `(helins.fcss/->DualName ~raw
                                ~(f-templated raw))
@@ -184,9 +198,7 @@
                                         (clojure.string/replace (name sym)
                                                                 #"\+$"
                                                                 "s")))]
-    
-     (concat `(def ~(with-meta sym
-                              {:foo :bar}))
+     (concat `(def ~sym)
             (when docstring
               [docstring])
             [(-dualname-body raw
@@ -418,6 +430,8 @@
   (let [node (js/document.getElementById css-id)]
     (when-not node
       (let [node-2 (js/document.createElement "link")]
+        (set! (.-className node-2)
+              "fcss_dev_link")
         (set! (.-href node-2)
               path)
         (set! (.-id node-2)
@@ -485,6 +499,7 @@
              decl+)))
 
 
+
 (defmacro defrul
 
   ""
@@ -496,7 +511,8 @@
   [sym & arg+]
 
   (let [cljs-optimization (fcss.compiler/cljs-optimization)
-        clojure?          (nil? cljs-optimization)]
+        clojure?          (or (nil? cljs-optimization)
+                              fcss.compiler/*clojure?*)]
     (if (and (not fcss.compiler/*defrul?*)
                (or clojure?
                    (identical? cljs-optimization
@@ -545,7 +561,7 @@
                 css-id     (format "fcss__%s__%s"
                                    (str *ns*)
                                    (name sym))
-                side-effet (if (fcss.compiler/compiling-cljs?)
+                side-effet (if-not clojure?
                              `(helins.fcss/-ensure-link-node ~css-id
                                                              ~(format "./fcss/%s/%s.css"
                                                                       (str *ns*)
@@ -590,7 +606,71 @@
 
 
 
+
+#?(:cljs
+   
+(defn remove-sheet+
+
+  ;;
+
+  []
+
+  (doseq [dom-element (vec (js/document.getElementsByClassName "fcss_dev_link"))]
+    (.remove dom-element))
+  nil))
+
+
+
+
+
+
+
+(defmacro clear!
+
+  ""
+
+  []
+
+  (let [cljs-optimization (fcss.compiler/cljs-optimization)
+        clojure?          (nil? cljs-optimization)]
+    (when (or clojure?
+              (identical? cljs-optimization
+                          :dev))
+      (fs/delete-dir path)
+      (when-not clojure?
+        `(helins.fcss/remove-sheet+)))))
+
+
+
+(defmacro refresh!
+
+  ""
+
+  [path-css]
+
+  (when (identical? (fcss.compiler/cljs-optimization)
+                    :dev)
+    `(quote ~(vec (mapcat (fn [[root _dir+ file+]]
+                            (map #(let [path (str root
+                                                  "/"
+                                                  %)]
+                                    (fs/touch path)
+                                    path)
+                                 file+))
+                          (fs/iterate-dir path-css))))))
  
+
+
+(defmacro reload!
+
+  ""
+
+  [path-css]
+
+  `(do
+     (helins.fcss/clear!)
+     (helins.fcss/refresh! ~path-css)))
+
 
 
 
