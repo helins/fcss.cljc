@@ -16,7 +16,8 @@
 
             #?(:clj [me.raynes.fs :as fs])
             #?(:clj [helins.fcss.compiler :as fcss.compiler]))
-  #?(:cljs (:require-macros [helins.fcss :refer [clear!]]))
+  #?(:cljs (:require-macros [helins.fcss :refer [
+                                                 clear!]]))
   #?(:clj (:import java.io.File
                    garden.color.CSSColor
                    garden.types.CSSUnit)))
@@ -497,6 +498,35 @@
                        templ))
              {}
              decl+)))
+
+
+
+
+
+(defmacro expand
+
+  ""
+
+  [& form+]
+
+  (let [clojure? fcss.compiler/*clojure?*]
+    (binding [fcss.compiler/*clojure?* true]
+      (when (and (not clojure?)
+                 (not fcss.compiler/*defrul?*))
+        (clojure.tools.namespace.repl/refresh))
+      (eval `(do ~@form+)))))
+
+
+
+(defmacro when-compiling
+
+  ""
+
+  [& form+]
+
+  `(helins.fcss/expand ~(concat ['do]
+                                form+
+                                [nil])))
 
 
 
