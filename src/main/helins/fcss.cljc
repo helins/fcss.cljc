@@ -164,40 +164,15 @@
 
 
 
-
-
-
-#?(:clj (do
-
-
-(defn- -dualname-body
-
-  ;;
-
-  [raw f-templated]
-
-  (let [cljs-optimization (fcss.compiler/cljs-optimization)]
-    (if (or fcss.compiler/*defrul?*
-            fcss.compiler/*clojure?*
-            (nil? cljs-optimization))
-      `(helins.fcss/->DualName ~raw
-                               ~(f-templated raw))
-      (case cljs-optimization
-        :dev     `(let [raw# ~raw]
-                    (.set helins.fcss/-registry
-                          raw#
-                          ~(f-templated raw))
-                    raw#)
-        :release raw))))
-
     
+#?(:clj (do
 
 
 (defn- -defdualname
 
   ;;
 
-  [sym docstring f-raw f-templated]
+  [env sym docstring f-raw f-templated]
 
   (let [raw (f-raw (fcss.compiler/magic (str *ns*)
                                         (clojure.string/replace (name sym)
@@ -206,8 +181,18 @@
      (concat `(def ~sym)
             (when docstring
               [docstring])
-            [(-dualname-body raw
-                             f-templated)])))
+            [(case (medium/target env)
+               :cljs/dev     `(let [raw# ~raw]
+                                (.set -registry
+                                      raw#
+                                      ~(f-templated raw))
+                                raw#)
+               :cljs/release raw
+               :clojure      `(->DualName ~raw
+                                          ~(f-templated raw)))])))
+              
+              
+              
 
 
 
@@ -223,7 +208,8 @@
 
   ([sym docstring]
 
-   (-defdualname sym
+   (-defdualname &env
+                 sym
                  docstring
                  identity
                  #(str \.
@@ -243,7 +229,8 @@
 
   ([sym docstring]
 
-   (-defdualname sym
+   (-defdualname &env
+                 sym
                  docstring
                  identity
                  #(str \#
@@ -309,7 +296,8 @@
 
   (let [docstring  (first option+)
         docstring? (string? docstring)]
-    (-defdualname sym
+    (-defdualname &env
+                  sym
                   (when docstring?
                     docstring)
                   #(str "--"
@@ -487,7 +475,7 @@
 
   ""
 
-  [env decl+]
+  [decl+]
 
   (reduce-kv #(assoc %1
                      (cond->
@@ -507,30 +495,34 @@
 
 
 
-(defmacro expand
+#?(:clj
+
+(defn -eval-rule+
 
   ""
 
-  [& form+]
+  [rule+]
 
-  (let [clojure? fcss.compiler/*clojure?*]
-    (binding [fcss.compiler/*clojure?* true]
-      (when (and (not clojure?)
-                 (not fcss.compiler/*defrul?*))
-        (clojure.tools.namespace.repl/refresh))
-      (eval `(do ~@form+)))))
+  (let [evaled (try
+                 (eval rule+)
+                 (catch Throwable e
+                   (throw (ex-info "Unable to eval CSS rules, are they written in propre CLJC?"
+                                   {:helins.css/rule+ rule+}
+                                   e))))]
+    (mapv (fn [rule]
+            (case (count rule)
+              2 (let [[templatable
+                       decl+]      rule]
+                  [(templ templatable)
+                   (-templ-decl+ decl+)])
+              3 (let [[template
+                       placeholder->templatable
+                       decl+]                   rule]
+                  [(templ template
+                          placeholder->templatable)
+                   (-templ-decl+ decl+)])))
+          evaled))))
 
-
-
-(defmacro when-compiling
-
-  ""
-
-  [& form+]
-
-  `(helins.fcss/expand ~(concat ['do]
-                                form+
-                                [nil])))
 
 
 
@@ -544,64 +536,29 @@
 
   [sym & arg+]
 
-  (let [cljs-optimization (fcss.compiler/cljs-optimization)
-        clojure?          (or (nil? cljs-optimization)
-                              fcss.compiler/*clojure?*)]
-    (if (and (not fcss.compiler/*defrul?*)
-               (or clojure?
-                   (identical? cljs-optimization
-                               :dev)))
-      (do
-        (binding [clojure.core/*e         nil
-                  fcss.compiler/*defrul?* true]
-          (when-not clojure?
-            (clojure.tools.namespace.repl/refresh)
-            (some-> clojure.core/*e
-                    throw))
-          (let [docstring  (first arg+)
-                docstring? (string? docstring)
-                rule+      (vec (cond->
-                                   arg+
-                                   docstring?
-                                   rest))
-                rule-2+    (try
-                              (eval rule+)
-                              (catch Throwable e
-                                (throw (ex-info "Unable to eval CSS rules, are they written in propre CLJC?"
-                                                {:helins.css/rule+ rule+}
-                                                e))))
-                rule-3+    (mapv (fn [rule]
-                                   (case (count rule)
-                                     2 (let [[templatable
-                                              decl+]      rule]
-                                         [(templ templatable)
-                                          (-templ-decl+ &env
-                                                        decl+)])
-                                     3 (let [[template
-                                              placeholder->templatable
-                                              decl+]                   rule]
-                                         [(templ template
-                                                 placeholder->templatable)
-                                          (-templ-decl+ &env
-                                                        decl+)])))
-                                 rule-2+)
-                path-dir   (str path
-                                "/"
-                                *ns*)
-                path-file  (str path-dir
-                                "/"
-                                (name sym)
-                                ".css")
-                css-id     (format "fcss__%s__%s"
-                                   (str *ns*)
-                                   (name sym))
-                side-effet (if-not clojure?
-                             `(helins.fcss/-ensure-link-node ~css-id
-                                                             ~(format "./fcss/%s/%s.css"
-                                                                      (str *ns*)
-                                                                      (name sym)))
-                             nil
-                             )]
+  (let [target    (medium/target &env)
+        cljs-dev? (identical? target
+                              :cljs/dev)]
+    (when (or cljs-dev?
+              (identical? target
+                          :clojure))
+      (when cljs-dev?
+        (medium/refresh-clojure))
+      (let [docstring  (first arg+)
+            docstring? (string? docstring)
+            rule+      (-eval-rule+ (vec (cond->
+                                           arg+
+                                           docstring?
+                                           rest)))]
+        (when (identical? (medium/target-init)
+                          :cljs/dev)
+          (let [path-dir  (str path
+                               "/"
+                               *ns*)
+                path-file (str path-dir
+                               "/"
+                               (name sym)
+                               ".css")]
             (try
               (.mkdirs (File. path-dir))
               (catch Throwable e
@@ -611,7 +568,7 @@
             (try
               (spit path-file
                     (cond->>
-                      (garden/css rule-3+)
+                      (garden/css rule+)
                       docstring?
                       (str "/* "
                            docstring
@@ -621,21 +578,26 @@
               (catch Throwable e
                 (throw (ex-info "Unable to write CSS dev file"
                                 {:helins.css.dev/path path-file}
-                                e))))
-            (swap! fcss.compiler/*rule+
-                   assoc-in
-                   [(symbol (str *ns*))
-                    sym]
-                   rule-3+)
-            `(do
-               ~side-effet
-               ~(concat `(def ~sym)
-                        (when docstring?
-                          [docstring])
-                        [`(quote ~(symbol (str *ns*)
-                                     (name sym)))])))))
-      `(def ~sym (quote ~(symbol (str *ns*)
-                                 (name sym)))))))
+                                e))))))
+        (swap! fcss.compiler/*rule+
+               assoc-in
+               [(symbol (str *ns*))
+                sym]
+               rule+)
+        `(do
+           ~(when cljs-dev?
+              `(helins.fcss/-ensure-link-node ~(format "fcss__%s__%s"
+                                                       (str *ns*)
+                                                       (name sym))
+                                              ~(format "./fcss/%s/%s.css"
+                                                       (str *ns*)
+                                                       (name sym))))
+           ~(concat `(def ~sym)
+                    (when docstring?
+                      [docstring])
+                    [`(quote ~(symbol (str *ns*)
+                                      (name sym)))]))))))
+
 
 
 

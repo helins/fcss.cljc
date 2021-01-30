@@ -17,20 +17,6 @@
 ;;;;;;;;;;
 
 
-(def ^:dynamic *defrul?*
-
-  ""
-
-  false)
-
-
-
-(def ^:dynamic *clojure?*
-
-  ""
-
-  false)
-
 
 
 
