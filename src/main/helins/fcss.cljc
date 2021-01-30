@@ -9,6 +9,8 @@
             [garden.core                  :as garden]
             [garden.types                 :as garden.type]
             [garden.util]
+
+            #?(:clj [helins.medium :as medium])
             
             #?(:clj [clojure.tools.namespace.repl])
 
@@ -17,7 +19,9 @@
             #?(:clj [me.raynes.fs :as fs])
             #?(:clj [helins.fcss.compiler :as fcss.compiler]))
   #?(:cljs (:require-macros [helins.fcss :refer [
-                                                 clear!]]))
+                                                 clear*
+                                                 refresh*
+                                                 ]]))
   #?(:clj (:import java.io.File
                    garden.color.CSSColor
                    garden.types.CSSUnit)))
@@ -380,7 +384,7 @@
 
 
 
-(def path
+(def ^String path
 
   ""
 
@@ -637,6 +641,7 @@
 
 
 
+
 #?(:cljs
    
 (defn remove-sheet+
@@ -654,52 +659,52 @@
 
 
 
+#?(:clj
 
-(defmacro clear!
+(defn- -clear
+
+  ""
+
+  [target]
+
+  (.delete (File. path))
+  (when-not (medium/clojure? target)
+    `(remove-sheet+))))
+
+
+
+(defmacro clear*
 
   ""
 
   []
 
-  (let [cljs-optimization (fcss.compiler/cljs-optimization)
-        clojure?          (nil? cljs-optimization)]
-    (when (or clojure?
-              (identical? cljs-optimization
-                          :dev))
-      (fs/delete-dir path)
-      (when-not clojure?
-        `(helins.fcss/remove-sheet+)))))
+  (let [target (medium/target &env)]
+    (when (#{:cljs/dev
+             :clojure} target)
+      (-clear target))))
 
 
 
-(defmacro refresh!
+
+(defmacro refresh*
 
   ""
 
   [path-css]
 
-  (when (identical? (fcss.compiler/cljs-optimization)
-                    :dev)
-    `(quote ~(vec (mapcat (fn [[root _dir+ file+]]
-                            (map #(let [path (str root
-                                                  "/"
-                                                  %)]
-                                    (fs/touch path)
-                                    path)
-                                 file+))
-                          (fs/iterate-dir path-css))))))
+  (let [target (medium/target &env)]
+    (when (#{:cljs/dev
+             :clojure} target)
+    `(do
+       ~(-clear target)
+       ~(medium/refresh-cljs path-css)))))
+
+
  
 
 
-(defmacro reload!
 
-  ""
-
-  [path-css]
-
-  `(do
-     (helins.fcss/clear!)
-     (helins.fcss/refresh! ~path-css)))
 
 
 
