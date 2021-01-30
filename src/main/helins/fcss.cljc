@@ -3,7 +3,10 @@
   ""
 
   (:require #?(:clj [clojure.edn])
-            [clojure.string]
+            #?(:clj [clojure.string])
+
+            #?(:clj [clojure.tools.namespace.repl])
+
             [garden.color]
             [garden.compiler]
             [garden.core                  :as garden]
@@ -11,13 +14,10 @@
             [garden.util]
 
             #?(:clj [helins.medium :as medium])
-            
-            #?(:clj [clojure.tools.namespace.repl])
 
-            #?(:clj [cljs.env])
+            #?(:clj [helins.fcss.compiler :as fcss.compiler])
+            )
 
-            #?(:clj [me.raynes.fs :as fs])
-            #?(:clj [helins.fcss.compiler :as fcss.compiler]))
   #?(:cljs (:require-macros [helins.fcss :refer [
                                                  clear*
                                                  refresh*
@@ -30,22 +30,7 @@
 ;;;;;;;;;;
 
 
-
-#?(:clj
-   
-(defn- -disable-reload!
-  
-  ""
-  
-  []
-  
-  (clojure.tools.namespace.repl/disable-reload!)
-  (clojure.tools.namespace.repl/disable-reload! (find-ns 'helins.fcss.compiler))))
-
-
-
-#?(:clj (-disable-reload!))
-
+#?(:clj (clojure.tools.namespace.repl/disable-reload!))
 
 
 
@@ -800,14 +785,3 @@
   (templ "var($var, $fallback)"
          {:fallback fallback-value
           :var      (str css-var)}))
-
-
-
-
-(defmacro load-edn
-
-  ""
-
-  [path]
-
-  `(quote ~(clojure.edn/read-string (slurp path))))
