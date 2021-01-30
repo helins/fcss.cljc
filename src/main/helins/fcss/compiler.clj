@@ -17,7 +17,7 @@
 ;;;;;;;;;;
 
 
-
+(clojure.tools.namespace.repl/disable-reload!)
 
 
 (def magic-word-begin

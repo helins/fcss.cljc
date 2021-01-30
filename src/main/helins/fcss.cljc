@@ -4,153 +4,128 @@
 
   (:require #?(:clj [clojure.edn])
             #?(:clj [clojure.string])
-
             #?(:clj [clojure.tools.namespace.repl])
-
-            [garden.color]
-            [garden.compiler]
-            [garden.core                  :as garden]
-            [garden.types                 :as garden.type]
-            [garden.util]
-
-            #?(:clj [helins.medium :as medium])
-
-            #?(:clj [helins.fcss.compiler :as fcss.compiler])
-            )
-
-  #?(:cljs (:require-macros [helins.fcss :refer [
-                                                 clear*
-                                                 refresh*
-                                                 ]]))
+                    [garden.color]
+                    [garden.compiler]
+                    [garden.core                    :as garden]
+                    [garden.types                   :as garden.type]
+                    [garden.util]
+                    [helins.medium                  :as medium]
+            #?(:clj [helins.fcss.compiler           :as fcss.compiler]))
+  #?(:cljs (:require-macros [helins.fcss :refer [clear*
+                                                 defclass
+                                                 defid
+                                                 defname
+                                                 defvar
+                                                 refresh*]]))
   #?(:clj (:import java.io.File
                    garden.color.CSSColor
                    garden.types.CSSUnit)))
 
 
-;;;;;;;;;;
-
-
 #?(:clj (clojure.tools.namespace.repl/disable-reload!))
 
 
-
-(defn color->hex
-
-  ""
-
-  [color]
-
-  (let [alpha (color :alpha)
-        hex   (garden.color/as-hex color)]
-    (cond->
-      hex
-      alpha
-      (do
-        (let [append (-> (Math/round (double (* alpha
-                                                255)))
-                         (garden.util/int->string 16))]
-          (str hex
-               (when (= (count append)
-                        1)
-                 "0")
-               append))))))
+;;;;;;;;;;
 
 
+#?(:clj
+
+(defn- -assoc-docstring
+
+  ;;
+
+  [sym docstring]
+
+  (cond->
+    sym
+    docstring
+    (vary-meta assoc
+               :docstring
+               docstring))))
+
+;;;;;;;;;;
 
 
+(medium/when-target* [:cljs/dev]
 
-
-
-
-(defprotocol ITemplate
-
- ; :extend-via-metadata  true
-
-  ""
-
-  (-templ [this]
-
-    ""))
+  (defonce ^:no-doc -registry
+   
+     (js/Map.)))
 
 
 
+(medium/when-target* [:cljs/dev
+                      :clojure]
 
 
-#?(:cljs 
+  (defprotocol ITemplate
 
-(def ^:no-doc -registry
+   ; :extend-via-metadata  true
 
-  ""
+    ""
 
-  (js/Map.)))
+    (-templ [this]
 
-
-
-
-
-(extend-protocol ITemplate
-
-  garden.color.CSSColor
-
-    (-templ [color]
-      (garden.compiler/render-css color))
+      ""))
 
 
-  garden.types.CSSUnit
+  (extend-protocol ITemplate
 
-    (-templ [unit]
-      (garden.compiler/render-css unit))
+    garden.color.CSSColor
 
-
-  #?(:clj  Number
-     :cljs number)
-
-    (-templ [n]
-      (str n))
+      (-templ [color]
+        (garden.compiler/render-css color))
 
 
-  #?(:clj  Object
-     :cljs object)
+    garden.types.CSSUnit
 
-    (-templ [o]
-      (str o))
-
-
-  #?(:clj  java.lang.String
-     :cljs string)
-
-    (-templ [string]
-      #?(:clj  string
-         :cljs (or (.get -registry
-                         string)
-                   string))))
+      (-templ [unit]
+        (garden.compiler/render-css unit))
 
 
+    #?(:clj  Number
+       :cljs number)
+
+      (-templ [n]
+        (str n))
 
 
+    #?(:clj  Object
+       :cljs object)
 
-(defrecord DualName [raw
-                     selector]
-
-  ITemplate
-
-    (-templ [_]
-      selector)
+      (-templ [o]
+        (str o))
 
 
-  Object
+    #?(:clj  java.lang.String
+       :cljs string)
 
-    (toString [_]
-      raw))
+      (-templ [string]
+        #?(:clj  string
+           :cljs (or (.get -registry
+                           string)
+                     string))))
 
 
+  (defrecord DualName [raw
+                       templated]
+
+    ITemplate
+
+      (-templ [_]
+        templated)
 
 
+    Object
+
+      (toString [_]
+        raw)))
 
 
 
     
-#?(:clj (do
+#?(:clj
 
 
 (defn- -defdualname
@@ -163,25 +138,23 @@
                                         (clojure.string/replace (name sym)
                                                                 #"\+$"
                                                                 "s")))]
-     (concat `(def ~sym)
-            (when docstring
-              [docstring])
-            [(case (medium/target env)
-               :cljs/dev     `(let [raw# ~raw]
-                                (.set -registry
-                                      raw#
-                                      ~(f-templated raw))
-                                raw#)
-               :cljs/release raw
-               :clojure      `(->DualName ~raw
-                                          ~(f-templated raw)))])))
-              
-              
-              
+    `(def ~(-assoc-docstring sym
+                             docstring)
+
+       ~(case (medium/target env)
+         :cljs/dev     `(let [raw# ~raw]
+                          (.set -registry
+                                raw#
+                                ~(f-templated raw))
+                          raw#)
+         :cljs/release raw
+         :clojure      `(->DualName ~raw
+                                    ~(f-templated raw)))))))
 
 
 
-(defmacro defclass
+(defmacro ^{:arglists '([sym docstring?])}
+          defclass
 
   ""
 
@@ -202,7 +175,8 @@
 
 
 
-(defmacro defid
+(defmacro ^{:arglists '([sym docstring?])}
+          defid
 
   ""
 
@@ -221,57 +195,32 @@
                  #(str \#
                        %))))
 
-))
 
 
-
-
-
-
-
-#?(:clj (do
-
-
-
-(defn- -defname
-
-  ;;
-
-  [sym docstring prefix]
-
-  (concat `(def ~sym)
-          (when docstring
-            [docstring])
-          [(str prefix
-                (fcss.compiler/magic (str *ns*)
-                                     (name sym)))]))
-
-
-
-
-
-
-
-(defmacro defname
+(defmacro ^{:arglists '([sym docstring?])}
+          defname
 
   ""
 
   ([sym]
 
-   (-defname sym
+   `(defname sym
              nil
              nil))
 
 
   ([sym docstring]
 
-   (-defname sym
-             docstring
-             nil)))
+   (concat `(def ~sym)
+           (when docstring
+             [docstring])
+           [(fcss.compiler/magic (str *ns*)
+                                 (name sym))])))
 
 
 
-(defmacro defvar
+(defmacro ^{:arglists '([sym docstring?])}
+          defvar
 
   ""
 
@@ -306,50 +255,44 @@
 
 
 
-))
+(medium/when-target* [:cljs/dev
+                      :clojure]
+
+  (defn templ
+
+    ""
+
+    ([templatable]
+
+     (-templ templatable))
 
 
+    ([template placeholder->templatable]
+
+     (let [template-2 (if (vector? template)
+                        (clojure.string/join ","
+                                             (map templ
+                                                  template))
+                        template)]
+       (if (clojure.string/includes? template-2
+                                     "&")
+         (clojure.string/replace template-2
+                                 "&"
+                                 (templ placeholder->templatable))
+         (reduce-kv #(clojure.string/replace %1
+                                             (cond
+                                               (keyword? %2) (str \$
+                                                                  (name %2))
+                                               (number? %2)  (str \$
+                                                                  %2)
+                                               :else         (throw (ex-info "Placeholder must be keyword or number"
+                                                                             {:placeholder %2
+                                                                              :template    template})))
+                                             (templ %3))
+                    template-2
+                    placeholder->templatable))))))
 
 
-
-
-
-
-
-
-(defn templ
-
-  ""
-
-  ([templatable]
-
-   (-templ templatable))
-
-
-  ([template placeholder->templatable]
-
-   (let [template-2 (if (vector? template)
-                      (clojure.string/join ","
-                                           (map templ
-                                                template))
-                      template)]
-     (if (clojure.string/includes? template-2
-                                   "&")
-       (clojure.string/replace template-2
-                               "&"
-                               (templ placeholder->templatable))
-       (reduce-kv #(clojure.string/replace %1
-                                           (cond
-                                             (keyword? %2) (str \$
-                                                                (name %2))
-                                             (number? %2)  (str \$
-                                                                %2)
-                                             :else         (throw (ex-info "Placeholder must be keyword or number"
-                                                                           {:placeholder %2
-                                                                            :template    template})))
-                                           (templ %3))
-                  template-2
-                  placeholder->templatable)))))
 
 
 
@@ -369,58 +312,75 @@
 
 
 
-(defn rule
+#?(:clj
 
-  ""
+  ;; TODO. Remove
 
-  ;; TODO. Smart templating akin to `defrul`
+  (defn rule
 
-  ([templatable style]
+    ""
 
-   [(templ templatable)
-    style])
+    ;; TODO. Smart templating akin to `defrul`
 
+    ([templatable style]
 
-  ([template placeholder->templatable style]
-
-    [(templ template
-            placeholder->templatable)
-    style]))
+     [(templ templatable)
+      style])
 
 
+    ([template placeholder->templatable style]
 
-
-
-
-
-
-#?(:cljs
+      [(templ template
+              placeholder->templatable)
+      style])))
 
 
 
 
-(defn ^:no-doc -ensure-link-node
 
-  ;;
 
-  [css-id path]
 
-  (let [node (js/document.getElementById css-id)]
-    (when-not node
-      (let [node-2 (js/document.createElement "link")]
-        (set! (.-className node-2)
-              "fcss_dev_link")
-        (set! (.-href node-2)
-              path)
-        (set! (.-id node-2)
-              css-id)
-        (set! (.-rel node-2)
-              "stylesheet")
-        (.appendChild js/document.head
-                      node-2))))))
+
+(medium/when-target* [:cljs/dev]
+
+  (defn ^:no-doc -ensure-link-node
+
+    ;;
+
+    [css-id path]
+
+    (let [node (js/document.getElementById css-id)]
+      (when-not node
+        (let [node-2 (js/document.createElement "link")]
+          (set! (.-className node-2)
+                "fcss_dev_link")
+          (set! (.-href node-2)
+                path)
+          (set! (.-id node-2)
+                css-id)
+          (set! (.-rel node-2)
+                "stylesheet")
+          (.appendChild js/document.head
+                        node-2))))))
 
 
        
+
+#?(:clj
+
+
+(defn -forbid-in-cljs-release
+
+  ;;
+
+  [form string]
+
+  (when (identical? (medium/target-init)
+                    :cljs/release)
+    (throw (ex-info (format "Feature 'helins.fcss/%s' cannot be used in CLJS advanced build"
+                            string)
+                    {:fcss/form form})))))
+
 
 
 
@@ -430,11 +390,15 @@
 
   ([]
 
+   (-forbid-in-cljs-release &form
+                            "rule-inspect")
    `(quote ~(deref fcss.compiler/*rule+)))
 
 
   ([sym]
 
+   (-forbid-in-cljs-release &form
+                            "rule-inspect")
    `(quote ~(let [rule+   @fcss.compiler/*rule+
                   var-sym (resolve &env
                                    sym)]
@@ -482,7 +446,7 @@
 
 #?(:clj
 
-(defn -eval-rule+
+(defn- -eval-rule+
 
   ""
 
@@ -510,12 +474,9 @@
 
 
 
-
 (defmacro defrul
 
   ""
-
-  ;; TODO. Ensures def to nil in advanced CLJS.
 
   {:arglists '([sym docstring? & rule+])}
 
@@ -577,32 +538,25 @@
                                               ~(format "./fcss/%s/%s.css"
                                                        (str *ns*)
                                                        (name sym))))
-           ~(concat `(def ~sym)
-                    (when docstring?
-                      [docstring])
-                    [`(quote ~(symbol (str *ns*)
-                                      (name sym)))]))))))
+           (def ~(-assoc-docstring sym
+                                   docstring)
+
+             (quote ~(symbol (str *ns*)
+                             (name sym)))))))))
 
 
 
-
-
-
-
-#?(:cljs
+(medium/when-target* [:cljs/dev]
    
-(defn remove-sheet+
+  (defn -remove-link+
 
-  ;;
+    ;;
 
-  []
+    []
 
-  (doseq [dom-element (vec (js/document.getElementsByClassName "fcss_dev_link"))]
-    (.remove dom-element))
-  nil))
-
-
-
+    (doseq [dom-element (vec (js/document.getElementsByClassName "fcss_dev_link"))]
+      (.remove dom-element))
+    nil))
 
 
 
@@ -615,8 +569,9 @@
   [target]
 
   (.delete (File. path))
-  (when-not (medium/clojure? target)
-    `(remove-sheet+))))
+  (when (identical? target
+                    :cljs/dev)
+    `(-remove-link+))))
 
 
 
@@ -655,133 +610,153 @@
 
 
 
+(medium/when-target* [:cljs/dev
+                      :clojure]
 
-(defn anim
+  (defn anim
 
-  ""
+    ""
 
-  [string-name frame+]
+    [string-name frame+]
 
-  (garden.type/->CSSAtRule :keyframes
-                           {:frames     frame+
-                            :identifier string-name}))
-
-
-
-
+    (garden.type/->CSSAtRule :keyframes
+                             {:frames     frame+
+                              :identifier string-name}))
 
 
-(defprotocol IInterpolate
-
-  ""
-
-  (interpolate [from this css-var]
-
-    ""))
-
-
-
-
-(defn- -default-interpolate
-
-  ;;
-
-  [from to css-var]
-
-  (templ "calc($from + ($to - $from) * $var)"
-         {:from from
-          :to   to
-          :var  css-var}))
-
-
-
-
-(extend-protocol IInterpolate
-
+  (defprotocol IInterpolate
   
-  garden.color.CSSColor
+    ""
+  
+    (interpolate [from this css-var]
+  
+      ""))
+  
+  
+  
+  
+  (defn- -default-interpolate
+  
+    ;;
+  
+    [from to css-var]
+  
+    (templ "calc($from + ($to - $from) * $var)"
+           {:from from
+            :to   to
+            :var  css-var}))
+  
+  
+  
+  
+  (extend-protocol IInterpolate
+  
+    
+    garden.color.CSSColor
+  
+      (interpolate [from to css-var]
+        (when-not (instance? garden.color.CSSColor
+                             to)
+          (throw (ex-info "Cannot interpolate color to non-color"
+                          {:from from
+                           :to   to})))
+        (let [alpha-1   (:alpha from)
+              alpha-2   (:alpha to)
+              rgb-1     (garden.color/as-rgb from)
+              rgb-2     (garden.color/as-rgb to)
+              calc+     (templ "calc($r-1 + ($r-2 - $r-1) * $var), calc($g-1 + ($g-2 - $g-1) * $var), calc($b-1 + ($b-2 - $b-1) * $var)"
+                               {:b-1 (rgb-1 :blue)
+                                :b-2 (rgb-2 :blue)
+                                :r-1 (rgb-1 :red)
+                                :r-2 (rgb-2 :red)
+                                :g-1 (rgb-1 :green)
+                                :g-2 (rgb-2 :green)
+                                :var css-var})]
+          (if (or alpha-1
+                  alpha-2)
+            (templ "rgba( $calc+, calc($a-1 + ($a-2 - $a-1) * $var))"
+                   {:a-1   (or alpha-1
+                               1)
+                    :a-2   (or alpha-2
+                               1)
+                    :calc+ calc+
+                    :var   css-var})
+            (str "rgb( " calc+ ")"))))
+  
+  
+    garden.types.CSSUnit
+  
+      (interpolate [from to css-var]
+        (when-not (instance? garden.types.CSSUnit
+                             to)
+          (throw (ex-info "Cannot interpolate unit to non-unit"
+                          {:from from
+                           :to   to})))
+        (-default-interpolate from
+                              to
+                              css-var))
+  
+    #?@(:cljs
+         
+         [number
+  
+            (interpolate [from to css-var]
+              (-default-interpolate from
+                                    to
+                                    css-var))])
+            
+  
+    #?(:clj  Object
+       :cljs object)
+  
+      (interpolate [from to css-var]
+        (-default-interpolate from
+                              to
+                              css-var))
+  
+    #?@(:cljs
+         
+         [string
+  
+            (interpolate [from to css-var]
+              (-default-interpolate from
+                                    to
+                                    css-var))]))
 
-    (interpolate [from to css-var]
-      (when-not (instance? garden.color.CSSColor
-                           to)
-        (throw (ex-info "Cannot interpolate color to non-color"
-                        {:from from
-                         :to   to})))
-      (let [alpha-1   (:alpha from)
-            alpha-2   (:alpha to)
-            rgb-1     (garden.color/as-rgb from)
-            rgb-2     (garden.color/as-rgb to)
-            calc+     (templ "calc($r-1 + ($r-2 - $r-1) * $var), calc($g-1 + ($g-2 - $g-1) * $var), calc($b-1 + ($b-2 - $b-1) * $var)"
-                             {:b-1 (rgb-1 :blue)
-                              :b-2 (rgb-2 :blue)
-                              :r-1 (rgb-1 :red)
-                              :r-2 (rgb-2 :red)
-                              :g-1 (rgb-1 :green)
-                              :g-2 (rgb-2 :green)
-                              :var css-var})]
-        (if (or alpha-1
-                alpha-2)
-          (templ "rgba( $calc+, calc($a-1 + ($a-2 - $a-1) * $var))"
-                 {:a-1   (or alpha-1
-                             1)
-                  :a-2   (or alpha-2
-                             1)
-                  :calc+ calc+
-                  :var   css-var})
-          (str "rgb( " calc+ ")"))))
+
+  (defn fallback
+
+    ""
+
+    [css-var fallback-value]
+
+    (templ "var($var, $fallback)"
+           {:fallback fallback-value
+            :var      (str css-var)})))
 
 
-  garden.types.CSSUnit
-
-    (interpolate [from to css-var]
-      (when-not (instance? garden.types.CSSUnit
-                           to)
-        (throw (ex-info "Cannot interpolate unit to non-unit"
-                        {:from from
-                         :to   to})))
-      (-default-interpolate from
-                            to
-                            css-var))
-
-  #?@(:cljs
-       
-       [number
-
-          (interpolate [from to css-var]
-            (-default-interpolate from
-                                  to
-                                  css-var))])
-          
-
-  #?(:clj  Object
-     :cljs object)
-
-    (interpolate [from to css-var]
-      (-default-interpolate from
-                            to
-                            css-var))
-
-  #?@(:cljs
-       
-       [string
-
-          (interpolate [from to css-var]
-            (-default-interpolate from
-                                  to
-                                  css-var))]))
+;;;;;;;;;
 
 
-
-
-
-
-
-(defn fallback
+(defn color->hex
 
   ""
 
-  [css-var fallback-value]
+  ;; TODO. PR to Garden.
 
-  (templ "var($var, $fallback)"
-         {:fallback fallback-value
-          :var      (str css-var)}))
+  [color]
+
+  (let [alpha (color :alpha)
+        hex   (garden.color/as-hex color)]
+    (cond->
+      hex
+      alpha
+      (do
+        (let [append (-> (Math/round (double (* alpha
+                                                255)))
+                         (garden.util/int->string 16))]
+          (str hex
+               (when (= (count append)
+                        1)
+                 "0")
+               append))))))
