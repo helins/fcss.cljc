@@ -7,8 +7,7 @@
             [clojure.string]
             [clojure.tools.namespace.repl]
             [garden.core                   :as garden]
-            [garden.compiler]
-            [helins.medium                 :as medium])
+            [garden.compiler])
   (:import java.io.File))
 
 
@@ -26,6 +25,29 @@
 
   (clojure.string/starts-with? string
                                "--"))
+
+
+;;;;;;;;;; Central registry for CSS rules
+
+
+(def *rule+
+
+  ;;
+
+  (atom {}))
+
+
+(defn add-rule!
+
+  ""
+
+  [unqualified-sym rule+]
+
+  (swap! *rule+
+         assoc-in
+         [(symbol (str *ns*))
+          unqualified-sym]
+         rule+))
 
 
 ;;;;;;;;;; Tagging strings and working with them
@@ -101,6 +123,45 @@
            :var+   #{}}
           (re-seq regex-tagged
                   string)))
+
+
+
+;;;;;;;;;; Compiling CSS for dev
+
+
+(defn compile-dev
+
+  ""
+
+  [path sym docstring rule+]
+
+  (let [path-dir  (str path
+                       "/"
+                       *ns*)
+        path-file (str path-dir
+                       "/"
+                       (name sym)
+                       ".css")]
+    (try
+      (.mkdirs (File. path-dir))
+      (catch Throwable e
+        (throw (ex-info "Unable to create directory for dev CSS files"
+                        {:helins.css.dev/path path-dir}
+                        e))))
+    (try
+      (spit path-file
+            (cond->>
+              (garden/css rule+)
+              docstring
+              (str "/* "
+                   docstring
+                   " */"
+                   \newline
+                   \newline)))
+      (catch Throwable e
+        (throw (ex-info "Unable to write CSS dev file"
+                        {:helins.css.dev/path path-file}
+                        e))))))
 
 
 ;;;;;;;;;; Compiling and optimizing CSS for release
@@ -516,19 +577,10 @@
     ctx-2))
 
 
+;;;;;;;;;; Main function for compiling optimized CSS
 
 
-
-(def *rule+
-
-  ;;
-
-  (atom {}))
-
-
-
-
-(def default
+(def main-default
 
   ""
 
@@ -539,8 +591,6 @@
    :fcss.path/report "resources/report/fcss.edn"})
 
 
-;;;;;;;;;;
-
 
 (defn main
 
@@ -550,7 +600,7 @@
 
   (let [{:as         arg-2+
          ns-entry    :fcss/entry
-         path-output :fcss.path/output} (merge default
+         path-output :fcss.path/output} (merge main-default
                                                arg+)]
     (require ns-entry)
     (let [rule+  (vec (apply concat
