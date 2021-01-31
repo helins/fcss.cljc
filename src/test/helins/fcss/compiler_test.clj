@@ -31,29 +31,29 @@
 
 
 
-(t/deftest regex+
+(t/deftest regex-tagged
 
-  (t/is (boolean (re-matches fcss.compiler/regex-magic
+  (t/is (boolean (re-matches fcss.compiler/regex-tagged
                              (str cl-0)))
         "Can match class")
-  (t/is (boolean (re-matches fcss.compiler/regex-magic
+  (t/is (boolean (re-matches fcss.compiler/regex-tagged
                              (str var-0)))
         "Can match var")
-  (t/is (boolean (re-matches fcss.compiler/regex-magic-class
+  (t/is (boolean (re-matches fcss.compiler/regex-tagged-class
                              (str cl-0)))
         "Matches class name")
-  (t/is (boolean (re-matches fcss.compiler/regex-magic-dotted-class
+  (t/is (boolean (re-matches fcss.compiler/regex-tagged-dotted-class
                              (fcss/templ cl-0)))
         "Matches dotted class name"))
 
 
 
-(t/deftest str->magic
+(t/deftest detect-tag+
 
   (t/is (= {:class+ #{(str cl-0)
                       (str cl-1)}
             :var+   #{(str var-0)}}
-           (fcss.compiler/str->magic+ (str "fldksjflskdjf"
+           (fcss.compiler/detect-tag+ (str "fldksjflskdjf"
                                            (str cl-0)
                                            "sldfkjsdlfksjkl"
                                            (str cl-1)

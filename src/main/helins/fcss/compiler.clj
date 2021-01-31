@@ -2,40 +2,20 @@
 
   ""
 
-  (:require [cljs.env]
-            [clojure.java.io]
+  (:require [clojure.java.io]
             [clojure.pprint]
             [clojure.string]
-
             [clojure.tools.namespace.repl]
-
-            [garden.core     :as garden]
-            [garden.compiler])
+            [garden.core                   :as garden]
+            [garden.compiler]
+            [helins.medium                 :as medium])
   (:import java.io.File))
-
-
-;;;;;;;;;;
 
 
 (clojure.tools.namespace.repl/disable-reload!)
 
 
-(def magic-word-begin
-
-  ""
-
-  "__MINCSS_MAGIC_WORD_BEGIN__")
-
-
-
-(def magic-word-end
-
-  ""
-
-  "__MINCSS_MAGIC_WORD_END__")
-
-
-
+;;;;;;;;;; Miscellaneous
 
 
 (defn css-var?
@@ -48,26 +28,46 @@
                                "--"))
 
 
+;;;;;;;;;; Tagging strings and working with them
 
-(let [base-pattern (str magic-word-begin
+
+(def tag-begin
+
+  ""
+
+  "<<<_FCSS_")
+
+
+
+(def tag-end
+
+  ""
+
+  "_FCSS_>>>")
+
+
+;;;;; Regexes for finding different kinds of tagged strings
+
+
+(let [base-pattern (str tag-begin
                   	    "\\S+?"
-                  	    magic-word-end)]
+                  	    tag-end)]
 
-  (def regex-magic
+  (def regex-tagged
 
     ""
 
     (re-pattern (str "(?:--)?"
                      base-pattern)))
 
-  (def regex-magic-class
+  (def regex-tagged-class
 
 	""
 
 	(re-pattern base-pattern))
 
 
-  (def regex-magic-var
+  (def regex-tagged-var
 
     ""
 
@@ -75,7 +75,7 @@
                      base-pattern)))
 
 
-  (def regex-magic-dotted-class
+  (def regex-tagged-dotted-class
 
     ""
 	
@@ -84,9 +84,7 @@
 
 
 
-
-
-(defn str->magic+
+(defn detect-tag+
 
   ""
 
@@ -101,9 +99,11 @@
                     magic-name))
           {:class+ #{}
            :var+   #{}}
-          (re-seq regex-magic
+          (re-seq regex-tagged
                   string)))
 
+
+;;;;;;;;;; Compiling and optimizing CSS for release
 
 
 (defn add-rule
@@ -139,7 +139,7 @@
                                      str-selector+
                                      (vector? str-selector+)
                                      (clojure.string/join ","))]
-                (if-some [dotted-class-name (re-matches regex-magic-dotted-class
+                (if-some [dotted-class-name (re-matches regex-tagged-dotted-class
                                                         str-selector+)]
                   (let [class-name (.substring ^String dotted-class-name
                                                1)]
@@ -157,7 +157,7 @@
                                         decl+)))
                       ctx))
                   (if-some [class-name+ (not-empty (into #{}
-                                                         (re-seq regex-magic-class
+                                                         (re-seq regex-tagged-class
                                                                  str-selector+)))]
                     (if (= (count (filter detected-name+
                                           class-name+))
@@ -182,7 +182,6 @@
 
 
 
-
 (defn group-decl+
 
   ""
@@ -200,10 +199,6 @@
                               decl))
                     {}
                     decl->class+)))
-
-
-
-
 
 
 
@@ -273,7 +268,6 @@
                                               class-name-munged)
                       style]))
               rule-complex+)))
-
 
 
 
@@ -360,7 +354,6 @@
 
 
 
-
 (defn compile-rule+
 
   ""
@@ -387,7 +380,7 @@
 
   (let [v*ctx    (volatile! ctx)
         output-2 (clojure.string/replace output
-                                         regex-magic
+                                         regex-tagged
                                          (fn [magic-name]
                                            (if (css-var? magic-name)
                                              (or (get var->munged
@@ -418,148 +411,6 @@
 
 
 
-(defn namespaced-name
-
-  ""
-
-  [str-ns str-sym]
-
-  (str (clojure.string/replace str-ns
-                               "."
-                               "__")
-       "__"
-       str-sym))
-
-
-
-
-
-
-
-
-
-(def cljs-optimization-level
-
-  ""
-
-  (some-> cljs.env/*compiler*
-          deref
-          (get-in [:options
-                   :optimizations])))
-
-
-
-
-(defn cljs-optimization-level-2
-
-  ""
-
-  []
-
-  (some-> cljs.env/*compiler*
-          deref
-          (get-in [:options
-                   :optimizations])))
-
-
-
-
-
-(defn cljs?
-
-  ""
-
-  []
-
-  (boolean (some-> cljs.env/*compiler*
-                   deref)))
-
-
-
-(defn cljs-optimization
-
-  ""
-
-  []
-
-  (when-some [*cljs-compiler cljs.env/*compiler*]
-    (if (identical? (get-in @*cljs-compiler
-                            [:options
-                             :optimizations])
-                    :advanced)
-      :release
-      :dev)))
-
-
-
-
-
-
-(defn compiling-cljs?
-
-  ""
-
-  []
-
-  (boolean (some-> cljs.env/*compiler*
-                   deref)))
-
-
-
-
-(def dev?
-
-  ""
-
-  (or (nil? cljs-optimization-level)
-      (not (identical? cljs-optimization-level
-                       :advanced))))
-
-
-
-
-(def release?
-
-  ""
-
-  (or (nil? cljs-optimization-level)
-      (identical? cljs-optimization-level
-                  :advanced)))
-
-
-
-
-
-
-
-(defn add-magic-word+
-
-  ""
-
-  [string]
-
-  (case (cljs-optimization)
-    :dev string
-    (str magic-word-begin
-         string
-         magic-word-end)))
-
-
-
-
-(defn magic
-
-  ""
-
-  [str-ns str-sym]
-
-  (add-magic-word+ (namespaced-name str-ns
-                                    str-sym)))
-
-
-
-
-
 (defn open-file+
 
   ""
@@ -570,7 +421,7 @@
         (for [path path+]
           (let [content (slurp path)]
             [path
-             (assoc (str->magic+ content)
+             (assoc (detect-tag+ content)
                     :content
                     content)]))))
 
@@ -605,7 +456,7 @@
   (run! (fn [[path {:keys [content]}]]
           (spit path
                 (clojure.string/replace content
-                                        regex-magic
+                                        regex-tagged
                                         (fn [magic-name]
                                           (or ((if (css-var? magic-name)
                                                  var->munged
@@ -613,7 +464,6 @@
                                                magic-name)
                                               "")))))
         opened-file+))
-
 
 
 
@@ -686,9 +536,10 @@
    :fcss/prefix      "_-_"
    :fcss.path/cljs+  ["resources/public/js/main.js"]
    :fcss.path/output "resources/css/main.css"
-   :fcss.path/report "resources/report/fcss.edn"
-   })
+   :fcss.path/report "resources/report/fcss.edn"})
 
+
+;;;;;;;;;;
 
 
 (defn main

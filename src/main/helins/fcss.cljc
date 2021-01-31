@@ -17,6 +17,7 @@
                                                  defid
                                                  defname
                                                  defvar
+                                                 namespaced-string*
                                                  refresh*]]))
   #?(:clj (:import java.io.File
                    garden.color.CSSColor
@@ -29,9 +30,7 @@
 ;;;;;;;;;;
 
 
-#?(:clj
-
-(defn- -assoc-docstring
+#?(:clj (defn- -assoc-docstring
 
   ;;
 
@@ -44,7 +43,57 @@
                :docstring
                docstring))))
 
+
+
+#?(:clj (defn -forbid-in-cljs-release
+
+    ;;
+
+    [form string]
+
+    (when (identical? (medium/target-init)
+                      :cljs/release)
+      (throw (ex-info (format "Feature 'helins.fcss/%s' cannot be used in CLJS advanced build"
+                              string)
+                      {:fcss/form form})))))
+
+
+
+#?(:clj (defn namespaced-string
+
+  ""
+
+  [sym]
+
+  (let [string (str (clojure.string/replace (str *ns*)
+                                            "."
+                                            "__")
+                    "__"
+                    (clojure.string/replace (name sym)
+                                            #"\+$"
+                                            "s"))]
+    (if (identical? (medium/target-init)
+                    :cljs/dev)
+      string
+      (str fcss.compiler/tag-begin
+           string
+           fcss.compiler/tag-end)))))
+
+
+
+(defmacro namespaced-string*
+
+  ""
+
+  [sym]
+
+  (-forbid-in-cljs-release &form
+                           "namespaced-string*")
+  (namespaced-string sym))
+
+
 ;;;;;;;;;;
+
 
 
 (medium/when-target* [:cljs/dev]
@@ -125,31 +174,25 @@
 
 
     
-#?(:clj
+#?(:clj (defn- -defdualname
 
+    ;;
 
-(defn- -defdualname
+    [env sym docstring f-raw f-templated]
 
-  ;;
+    (let [raw (f-raw (namespaced-string sym))]
+      `(def ~(-assoc-docstring sym
+                               docstring)
 
-  [env sym docstring f-raw f-templated]
-
-  (let [raw (f-raw (fcss.compiler/magic (str *ns*)
-                                        (clojure.string/replace (name sym)
-                                                                #"\+$"
-                                                                "s")))]
-    `(def ~(-assoc-docstring sym
-                             docstring)
-
-       ~(case (medium/target env)
-         :cljs/dev     `(let [raw# ~raw]
-                          (.set -registry
-                                raw#
-                                ~(f-templated raw))
-                          raw#)
-         :cljs/release raw
-         :clojure      `(->DualName ~raw
-                                    ~(f-templated raw)))))))
+         ~(case (medium/target env)
+           :cljs/dev     `(let [raw# ~raw]
+                            (.set -registry
+                                  raw#
+                                  ~(f-templated raw))
+                            raw#)
+           :cljs/release raw
+           :clojure      `(->DualName ~raw
+                                      ~(f-templated raw)))))))
 
 
 
@@ -211,11 +254,10 @@
 
   ([sym docstring]
 
-   (concat `(def ~sym)
-           (when docstring
-             [docstring])
-           [(fcss.compiler/magic (str *ns*)
-                                 (name sym))])))
+   `(def ~(-assoc-docstring sym
+                            docstring)
+
+      ~(namespaced-string sym))))
 
 
 
@@ -235,7 +277,7 @@
                   (when docstring?
                     docstring)
                   #(str "--"
-                       %)
+                        %)
                   #(let [{:keys [fallback
                                  unit]}   (cond->
                                             option+
@@ -312,15 +354,11 @@
 
 
 
-#?(:clj
-
-  ;; TODO. Remove
-
-  (defn rule
+#?(:clj (defn rule
 
     ""
 
-    ;; TODO. Smart templating akin to `defrul`
+    ;; TODO. Remove
 
     ([templatable style]
 
@@ -364,29 +402,11 @@
                         node-2))))))
 
 
-       
-
-#?(:clj
-
-
-(defn -forbid-in-cljs-release
-
-  ;;
-
-  [form string]
-
-  (when (identical? (medium/target-init)
-                    :cljs/release)
-    (throw (ex-info (format "Feature 'helins.fcss/%s' cannot be used in CLJS advanced build"
-                            string)
-                    {:fcss/form form})))))
-
-
-
 
 (defmacro rule-inspect
 
   ""
+
 
   ([]
 
@@ -417,10 +437,7 @@
 
 
 
-#?(:clj
-
-
-(defn- -templ-decl+
+#?(:clj (defn- -templ-decl+
 
   ""
 
@@ -442,11 +459,7 @@
 
 
 
-
-
-#?(:clj
-
-(defn- -eval-rule+
+#?(:clj (defn- -eval-rule+
 
   ""
 
@@ -560,9 +573,7 @@
 
 
 
-#?(:clj
-
-(defn- -clear
+#?(:clj (defn- -clear
 
   ""
 
@@ -603,12 +614,6 @@
        ~(medium/refresh-cljs path-css)))))
 
 
- 
-
-
-
-
-
 
 (medium/when-target* [:cljs/dev
                       :clojure]
@@ -633,8 +638,6 @@
       ""))
   
   
-  
-  
   (defn- -default-interpolate
   
     ;;
@@ -645,8 +648,6 @@
            {:from from
             :to   to
             :var  css-var}))
-  
-  
   
   
   (extend-protocol IInterpolate
@@ -695,7 +696,8 @@
         (-default-interpolate from
                               to
                               css-var))
-  
+
+
     #?@(:cljs
          
          [number
@@ -704,8 +706,8 @@
               (-default-interpolate from
                                     to
                                     css-var))])
-            
   
+
     #?(:clj  Object
        :cljs object)
   
