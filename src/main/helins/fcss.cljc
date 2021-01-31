@@ -63,21 +63,28 @@
 
   ""
 
-  [sym]
+  ([sym]
 
-  (let [string (str (clojure.string/replace (str *ns*)
-                                            "."
-                                            "__")
-                    "__"
-                    (clojure.string/replace (name sym)
-                                            #"\+$"
-                                            "s"))]
-    (if (identical? (medium/target-init)
-                    :cljs/dev)
-      string
-      (str fcss.compiler/tag-begin
-           string
-           fcss.compiler/tag-end)))))
+   (namespaced-string nil
+                      sym))
+
+
+  ([nmspace unqualified-sym]
+
+   (let [string (str (clojure.string/replace (str (or nmspace
+                                                      *ns*))
+                                             "."
+                                             "__")
+                     "__"
+                     (clojure.string/replace (str unqualified-sym)
+                                             #"\+$"
+                                             "s"))]
+     (if (identical? (medium/target-init)
+                     :cljs/dev)
+       string
+       (str fcss.compiler/tag-begin
+            string
+            fcss.compiler/tag-end))))))
 
 
 

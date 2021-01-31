@@ -133,35 +133,45 @@
 
   ""
 
-  [path sym docstring rule+]
+  ([path unqualified-sym docstring rule+]
 
-  (let [path-dir  (str path
-                       "/"
-                       *ns*)
-        path-file (str path-dir
-                       "/"
-                       (name sym)
-                       ".css")]
-    (try
-      (.mkdirs (File. path-dir))
-      (catch Throwable e
-        (throw (ex-info "Unable to create directory for dev CSS files"
-                        {:helins.css.dev/path path-dir}
-                        e))))
-    (try
-      (spit path-file
-            (cond->>
-              (garden/css rule+)
-              docstring
-              (str "/* "
-                   docstring
-                   " */"
-                   \newline
-                   \newline)))
-      (catch Throwable e
-        (throw (ex-info "Unable to write CSS dev file"
-                        {:helins.css.dev/path path-file}
-                        e))))))
+   (compile-dev path
+                nil
+                unqualified-sym
+                docstring
+                rule+))
+
+
+  ([path nmspace unqualified-sym docstring rule+]
+
+   (let [path-dir  (str path
+                        "/"
+                        (or nmspace
+                            *ns*))
+         path-file (str path-dir
+                        "/"
+                        (str unqualified-sym)
+                        ".css")]
+     (try
+       (.mkdirs (File. path-dir))
+       (catch Throwable e
+         (throw (ex-info "Unable to create directory for dev CSS files"
+                         {:helins.css.dev/path path-dir}
+                         e))))
+     (try
+       (spit path-file
+             (cond->>
+               (garden/css rule+)
+               docstring
+               (str "/* "
+                    docstring
+                    " */"
+                    \newline
+                    \newline)))
+       (catch Throwable e
+         (throw (ex-info "Unable to write CSS dev file"
+                         {:helins.css.dev/path path-file}
+                         e)))))))
 
 
 ;;;;;;;;;; Compiling and optimizing CSS for release
