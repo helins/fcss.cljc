@@ -1,7 +1,6 @@
 {:deps
- {garden/garden       {:mvn/version "1.3.10"}
-  io.helins/medium    {:mvn/version "0.0.0-alpha0"}
-  org.clojure/clojure {:mvn/version "1.10.1"}}
+ {garden/garden    {:mvn/version "1.3.10"}
+  io.helins/medium {:mvn/version "0.0.0-alpha0"}}
 
  :paths
  ["src/main"]
@@ -13,7 +12,7 @@
 
   :deploy
   {:extra-deps {deps-deploy/deps-deploy {:mvn/version "0.0.9"}}
-   :main-opts  ["-m" "deps-deploy.deps-deploy" "deploy" "fcss.jar"]}
+   :main-opts  ["-m" "deps-deploy.deps-deploy" "deploy" "release.jar"]}
 
   :dev
   {:extra-deps  {criterium/criterium {:mvn/version "0.4.5"}}
@@ -21,11 +20,11 @@
 
   :jar
   {:extra-deps {seancorfield/depstar {:mvn/version "0.5.2"}}
-   :main-opts ["-m" "hf.depstar.jar" "fcss.jar"]}
+   :main-opts ["-m" "hf.depstar.jar" "release.jar"]}
 
   :install
   {:extra-deps {deps-deploy/deps-deploy {:mvn/version "0.0.9"}}
-   :main-opts ["-m" "deps-deploy.deps-deploy" "install" "fcss.jar"]}
+   :main-opts ["-m" "deps-deploy.deps-deploy" "install" "release.jar"]}
 
   :run-compiler
   {:exec-args   {:fcss/entry helins.fcss.dev.css}
@@ -33,7 +32,6 @@
    :extra-paths ["src/dev"]}
 
   :test
-  {:extra-deps  {lambdaisland/chui        {:mvn/version "0.0.117"}
-                 lambdaisland/kaocha      {:mvn/version "1.0-612"}
-                 lambdaisland/kaocha-cljs {:mvn/version "0.0-71"}}
+  {:extra-deps  {lambdaisland/chui   {:mvn/version "0.0.117"}
+                 lambdaisland/kaocha {:mvn/version "1.0-612"}}
    :extra-paths ["src/test"]}}}
