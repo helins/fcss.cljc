@@ -45,20 +45,6 @@
 
 
 
-#?(:clj (defn -forbid-in-cljs-release
-
-    ;;
-
-    [form string]
-
-    (when (identical? (medium/target-init)
-                      :cljs/release)
-      (throw (ex-info (format "Feature 'helins.fcss/%s' cannot be used in CLJS advanced build"
-                              string)
-                      {:fcss/form form})))))
-
-
-
 #?(:clj (defn namespaced-string
 
   ""
@@ -94,8 +80,8 @@
 
   [sym]
 
-  (-forbid-in-cljs-release &form
-                           "namespaced-string*")
+  (medium/not-cljs-release &env
+                           &form)
   (namespaced-string sym))
 
 
@@ -417,15 +403,15 @@
 
   ([]
 
-   (-forbid-in-cljs-release &form
-                            "rule-inspect")
+   (medium/not-cljs-release &env
+                            &form)
    `(quote ~(deref fcss.compiler/*rule+)))
 
 
   ([sym]
 
-   (-forbid-in-cljs-release &form
-                            "rule-inspect")
+   (medium/not-cljs-release &env
+                            &form)
    `(quote ~(let [rule+   @fcss.compiler/*rule+
                   var-sym (resolve &env
                                    sym)]
