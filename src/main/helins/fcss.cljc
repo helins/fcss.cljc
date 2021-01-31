@@ -65,7 +65,7 @@
                      (clojure.string/replace (str unqualified-sym)
                                              #"\+$"
                                              "s"))]
-     (if (identical? (medium/target-init)
+     (if (identical? medium/target-init
                      :cljs/dev)
        string
        (str fcss.compiler/tag-begin
@@ -502,7 +502,7 @@
                                            arg+
                                            docstring?
                                            rest)))]
-        (when (identical? (medium/target-init)
+        (when (identical? medium/target-init
                           :cljs/dev)
           (fcss.compiler/compile-dev path
                                      sym
