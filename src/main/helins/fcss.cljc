@@ -271,22 +271,16 @@
                     docstring)
                   #(str "--"
                         %)
-                  #(let [{:keys [fallback
-                                 unit]}   (cond->
-                                            option+
-                                            docstring?
-                                            rest)
-                         string-1         (if fallback
-                                            (format "var(%s, %s)"
-                                                    %
-                                                    fallback)
-                                            (format "var(%s)"
-                                                    %))]
-                     (if unit
-                       (format "calc(1%s * %s)"
-                               (name unit)
-                               string-1)
-                       string-1)))))
+                  #(let [{:keys [fallback]} (cond->
+                                              option+
+                                              docstring?
+                                              rest)]
+                     (if fallback
+                       `(templ "var($name, $fallback)"
+                               {:fallback ~fallback
+                                :name     ~%})
+                       (format "var(%s)"
+                               %))))))
 
 
 
@@ -612,7 +606,7 @@
   
     [from to css-var]
   
-    (templ "calc($from + ($to - $from) * $var)"
+    (templ "calc($from + (($to - $from) * $var))"
            {:from from
             :to   to
             :var  css-var}))

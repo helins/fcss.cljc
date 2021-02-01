@@ -22,8 +22,7 @@
 
   "Docstring"
 
-  :fallback 50
-  :unit     %)
+  :fallback css-var)
 
 
 
@@ -49,9 +48,11 @@
            (fcss/templ css-var))
         "CSS var")
 
-  (t/is (= (str "calc(1% * var("
+  (t/is (= (str "var("
                 css-var-2
-                ", 50))")
+                ", var("
+                css-var
+                "))")
            (fcss/templ css-var-2))
         "CSS var with fallback and unit")
 
@@ -116,17 +117,17 @@
                                    #"\s+"
                                    " "))
         "With alpha Garden Colors")
-  (t/is (= "calc(10px + (2em - 10px) * test-var)"
+  (t/is (= "calc(10px + ((2em - 10px) * test-var))"
            (fcss/interpolate (garden.unit/px 10)
                              (garden.unit/em 2)
                              "test-var"))
         "With Garden Units")
-  (t/is (= "calc(10 + (50 - 10) * test-var)"
+  (t/is (= "calc(10 + ((50 - 10) * test-var))"
            (fcss/interpolate 10
                              "50"
                              "test-var"))
         "With number")
-  (t/is (= "calc(10 + (50 - 10) * test-var)"
+  (t/is (= "calc(10 + ((50 - 10) * test-var))"
            (fcss/interpolate "10"
                              50
                              "test-var"))

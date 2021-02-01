@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 
 
-clojure -M:jar && clojure -M:install && rm fcss.jar
+clojure -M:jar && clojure -M:install && rm release.jar
