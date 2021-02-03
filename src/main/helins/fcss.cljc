@@ -88,7 +88,6 @@
 ;;;;;;;;;;
 
 
-
 (medium/when-target* [:cljs/dev]
 
   (defonce ^:no-doc -registry
@@ -446,31 +445,34 @@
 
 
 
-#?(:clj (defn- -eval-rule+
+#?(:clj (defn ^:no-doc -compile
 
-  ""
+  ;;
 
-  [rule+]
+  [sym docstring rule+]
 
-  (let [evaled (try
-                 (eval rule+)
-                 (catch Throwable e
-                   (throw (ex-info "Unable to eval CSS rules, are they written in propre CLJC?"
-                                   {:helins.css/rule+ rule+}
-                                   e))))]
-    (mapv (fn [rule]
-            (case (count rule)
-              2 (let [[templatable
-                       decl+]      rule]
-                  [(templ templatable)
-                   (-templ-decl+ decl+)])
-              3 (let [[template
-                       placeholder->templatable
-                       decl+]                   rule]
-                  [(templ template
-                          placeholder->templatable)
-                   (-templ-decl+ decl+)])))
-          evaled))))
+  (let [rule-2+ (mapv (fn [rule]
+                        (case (count rule)
+                          2 (let [[templatable
+                                   decl+]      rule]
+                              [(templ templatable)
+                               (-templ-decl+ decl+)])
+                          3 (let [[template
+                                   placeholder->templatable
+                                   decl+]                   rule]
+                              [(templ template
+                                      placeholder->templatable)
+                               (-templ-decl+ decl+)])))
+                      rule+)]
+    (when (identical? medium/target-init
+                      :cljs/dev)
+      (fcss.compiler/compile-dev path
+                                 sym
+                                 docstring
+                                 rule-2+))
+    (fcss.compiler/add-rule! sym
+                             rule-2+))))
+
 
 
 
@@ -491,28 +493,24 @@
       (when cljs-dev?
         (medium/refresh-clojure))
       (let [docstring  (first arg+)
-            docstring? (string? docstring)
-            rule+      (-eval-rule+ (vec (cond->
-                                           arg+
-                                           docstring?
-                                           rest)))]
-        (when (identical? medium/target-init
-                          :cljs/dev)
-          (fcss.compiler/compile-dev path
-                                     sym
-                                     (when docstring?
-                                       docstring)
-                                     rule+))
-        (fcss.compiler/add-rule! sym
-                                 rule+)
+            docstring? (string? docstring)]
         `(do
-           ~(when cljs-dev?
-              `(helins.fcss/-ensure-link-node ~(format "fcss__%s__%s"
-                                                       (str *ns*)
-                                                       (name sym))
-                                              ~(format "./fcss/%s/%s.css"
-                                                       (str *ns*)
-                                                       (name sym))))
+           ~(if cljs-dev?
+              `(-ensure-link-node ~(format "fcss__%s__%s"
+                                           (str *ns*)
+                                           (name sym))
+                                  ~(format "./fcss/%s/%s.css"
+                                           (str *ns*)
+                                           (name sym)))
+              (when-not (identical? medium/target-init
+                                    :cljs/release)
+                `(-compile '~sym
+                           ~(when docstring?
+                              docstring)
+                           ~(vec (cond->
+                                   arg+
+                                   docstring?
+                                   rest)))))
            (def ~(-assoc-docstring sym
                                    docstring)
 
