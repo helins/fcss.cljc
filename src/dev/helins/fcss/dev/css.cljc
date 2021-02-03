@@ -12,6 +12,9 @@
 ;;;;;;;;;;
 
 
+#?(:clj (println :clj-1))
+
+
 (fcss/defclass klass)
 
 (fcss/defvar bg)
@@ -22,7 +25,7 @@
  
  
 
-(fcss/defrul rule+
+(fcss/defrul rul-1
 
   ;"Docstring test.
 
@@ -37,8 +40,16 @@
     :top        (css.unit/percent 50)
     :width      length
     bg          fcss.dev.css-2/color
-    length      50}]
+    length      50}])
+
+
+
+(fcss/defrul rul-2
 
   (let [color 'red]
     [klass
      {:color color}]))
+
+
+
+(fcss/root*)

@@ -4,14 +4,13 @@
 
   (:require #?(:clj [clojure.edn])
             #?(:clj [clojure.string])
-            #?(:clj [clojure.tools.namespace.repl])
                     [garden.color]
                     [garden.compiler]
-                    [garden.core                    :as garden]
-                    [garden.types                   :as garden.type]
+                    [garden.core          :as garden]
+                    [garden.types         :as garden.type]
                     [garden.util]
-                    [helins.medium                  :as medium]
-            #?(:clj [helins.fcss.compiler           :as fcss.compiler]))
+                    [helins.medium        :as medium]
+            #?(:clj [helins.fcss.compiler :as fcss.compiler]))
   #?(:cljs (:require-macros [helins.fcss :refer [clear*
                                                  defclass
                                                  defid
@@ -22,9 +21,6 @@
   #?(:clj (:import java.io.File
                    garden.color.CSSColor
                    garden.types.CSSUnit)))
-
-
-#?(:clj (clojure.tools.namespace.repl/disable-reload!))
 
 
 ;;;;;;;;;;
@@ -476,6 +472,40 @@
 
 
 
+#?(:clj (defn- -co-load
+
+  ;;
+
+  [env]
+
+  (when (identical? (medium/target env)
+                    :cljs/dev)
+    (medium/co-load env))))
+
+
+
+(defmacro co-load*
+
+  ""
+
+  []
+
+  (-co-load &env)
+  nil)
+
+
+
+(defmacro root*
+
+  ""
+
+  []
+
+  (medium/next-reload-cycle &env)
+  nil)
+
+
+
 (defmacro defrul
 
   ""
@@ -490,10 +520,9 @@
     (when (or cljs-dev?
               (identical? target
                           :clojure))
-      (when cljs-dev?
-        (medium/refresh-clojure))
       (let [docstring  (first arg+)
             docstring? (string? docstring)]
+        (-co-load &env)
         `(do
            ~(if cljs-dev?
               `(-ensure-link-node ~(format "fcss__%s__%s"
@@ -571,7 +600,8 @@
              :clojure} target)
     `(do
        ~(-clear target)
-       ~(medium/refresh-cljs path-css)))))
+       ~(medium/touch-recur path-css
+                            medium/file-cljs?)))))
 
 
 

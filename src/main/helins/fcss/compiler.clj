@@ -5,13 +5,9 @@
   (:require [clojure.java.io]
             [clojure.pprint]
             [clojure.string]
-            [clojure.tools.namespace.repl]
-            [garden.core                   :as garden]
+            [garden.core      :as garden]
             [garden.compiler])
   (:import java.io.File))
-
-
-(clojure.tools.namespace.repl/disable-reload!)
 
 
 ;;;;;;;;;; Miscellaneous
