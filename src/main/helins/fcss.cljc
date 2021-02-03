@@ -480,7 +480,9 @@
 
   (when (identical? (medium/target env)
                     :cljs/dev)
-    (medium/co-load env))))
+    (when (medium/co-load env)
+      (println (format "[FCSS] Co-loaded %s"
+                       (str *ns*)))))))
 
 
 
@@ -501,6 +503,7 @@
 
   []
 
+  (println "[FCSS] Root handling")
   (medium/next-reload-cycle &env)
   nil)
 
