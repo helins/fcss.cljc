@@ -13,6 +13,7 @@
             #?(:clj [helins.fcss.compiler :as fcss.compiler]))
   #?(:cljs (:require-macros [helins.fcss :refer [clear*
                                                  defclass
+                                                 defdata
                                                  defid
                                                  defname
                                                  defvar
@@ -189,20 +190,29 @@
 
   ""
 
-  ([sym]
+  [sym & [docstring]]
 
-   `(defclass ~sym
-              nil))
+  (-defdualname &env
+                sym
+                docstring
+                identity
+                #(str \.
+                      %)))
 
 
-  ([sym docstring]
 
-   (-defdualname &env
-                 sym
-                 docstring
-                 identity
-                 #(str \.
-                       %))))
+(defmacro ^{:arglists '([sym docstring?])}
+          defdata
+
+  ""
+
+  [sym & [docstring]]
+
+  `(def ~(-assoc-docstring sym
+                           docstring)
+
+     ~(str "data-"
+           (namespaced-string sym))))
 
 
 
@@ -211,20 +221,14 @@
 
   ""
 
-  ([sym]
+  [sym & [docstring]]
 
-   `(defid ~sym
-           nil))
-
-
-  ([sym docstring]
-
-   (-defdualname &env
-                 sym
-                 docstring
-                 identity
-                 #(str \#
-                       %))))
+  (-defdualname &env
+                sym
+                docstring
+                identity
+                #(str \#
+                      %)))
 
 
 
@@ -233,19 +237,12 @@
 
   ""
 
-  ([sym]
+  [sym & [docstring]]
 
-   `(defname sym
-             nil
-             nil))
+  `(def ~(-assoc-docstring sym
+                           docstring)
 
-
-  ([sym docstring]
-
-   `(def ~(-assoc-docstring sym
-                            docstring)
-
-      ~(namespaced-string sym))))
+     ~(namespaced-string sym)))
 
 
 
