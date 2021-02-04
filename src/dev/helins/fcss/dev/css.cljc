@@ -6,6 +6,7 @@
 
   (:require [garden.units          :as css.unit]
             [helins.fcss           :as fcss]
+            #?(:clj [helins.fcss.compiler])
             [helins.fcss.dev.css-2 :as fcss.dev.css-2]))
 
 

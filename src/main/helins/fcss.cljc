@@ -471,45 +471,6 @@
 
 
 
-
-#?(:clj (defn- -co-load
-
-  ;;
-
-  [env]
-
-  (when (identical? (medium/target env)
-                    :cljs/dev)
-    (when (medium/co-load env)
-      (println (format "[FCSS] Co-loaded %s"
-                       (str *ns*)))))))
-
-
-
-(defmacro co-load*
-
-  ""
-
-  []
-
-  (-co-load &env)
-  nil)
-
-
-
-#?(:clj (defn dev-hook
-
-  ""
-
-  {:shadow.build/stage :compile-finish}
-
-  [& [state]]
-
-  (println "[FCSS] Clearing co-loading state")
-  (medium/compiler-hook state)))
-
-
-
 (defmacro defrul
 
   ""
@@ -526,7 +487,6 @@
                           :clojure))
       (let [docstring  (first arg+)
             docstring? (string? docstring)]
-        (-co-load &env)
         `(do
            ~(if cljs-dev?
               `(-ensure-link-node ~(format "fcss__%s__%s"

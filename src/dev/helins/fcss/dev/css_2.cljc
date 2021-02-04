@@ -10,10 +10,9 @@
 #?(:clj (println :clj-2))
 
 
-(fcss/co-load*)
+(def color 'green)
 
 
-(def color 'red)
 
 
 
