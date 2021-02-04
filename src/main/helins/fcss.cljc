@@ -457,8 +457,12 @@
                                       placeholder->templatable)
                                (-templ-decl+ decl+)])))
                       rule+)]
-    (when (identical? medium/target-init
-                      :cljs/dev)
+    (when (and (identical? medium/target-init
+                           :cljs/dev)
+               (not= rule-2+
+                     (get-in @fcss.compiler/*rule+
+                             [(ns-name *ns*)
+                              sym])))
       (fcss.compiler/compile-dev path
                                  sym
                                  docstring

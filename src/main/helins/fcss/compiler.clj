@@ -41,7 +41,7 @@
 
   (swap! *rule+
          assoc-in
-         [(symbol (str *ns*))
+         [(ns-name *ns*)
           unqualified-sym]
          rule+))
 
