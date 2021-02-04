@@ -6,11 +6,12 @@
             #?(:clj [clojure.string])
                     [garden.color]
                     [garden.compiler]
-                    [garden.core          :as garden]
-                    [garden.types         :as garden.type]
+                    [garden.core           :as garden]
+                    [garden.types          :as garden.type]
                     [garden.util]
-                    [helins.medium        :as medium]
-            #?(:clj [helins.fcss.compiler :as fcss.compiler]))
+                    [helins.medium         :as medium]
+            #?(:clj [helins.medium.co-load :as medium.co-load])
+            #?(:clj [helins.fcss.compiler  :as fcss.compiler]))
   #?(:cljs (:require-macros [helins.fcss :refer [clear*
                                                  defclass
                                                  defdata
@@ -527,13 +528,20 @@
 
 
 
-#?(:clj (defn- -clear
+#?(:clj (defn- ^:no-doc -clear
 
   ""
 
   [target]
 
-  (.delete (File. path))
+  (reset! fcss.compiler/*rule+
+          nil)
+  (let [dir (File. ^String path)]
+    (doseq [dir-ns (.listFiles dir)]
+      (doseq [file-rul (.listFiles dir-ns)]
+        (.delete file-rul))
+      (.delete dir-ns))
+    (.delete dir))
   (when (identical? target
                     :cljs/dev)
     `(-remove-link+))))
@@ -563,10 +571,12 @@
   (let [target (medium/target &env)]
     (when (#{:cljs/dev
              :clojure} target)
-    `(do
-       ~(-clear target)
-       ~(medium/touch-recur path-css
-                            medium/file-cljs?)))))
+      `(do
+         ~(-clear target)
+         ~(do
+            (medium.co-load/reload-all!)
+            (medium/touch-recur path-css
+                                medium/file-cljs?))))))
 
 
 
