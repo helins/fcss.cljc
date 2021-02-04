@@ -497,15 +497,16 @@
 
 
 
-(defmacro root*
+#?(:clj (defn dev-hook
 
   ""
 
-  []
+  {:shadow.build/stage :compile-finish}
 
-  (println "[FCSS] Root handling")
-  (medium/next-reload-cycle &env)
-  nil)
+  [& [state]]
+
+  (println "[FCSS] Clearing co-loading state")
+  (medium/compiler-hook state)))
 
 
 

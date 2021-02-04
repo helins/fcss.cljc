@@ -49,7 +49,3 @@
   (let [color 'red]
     [klass
      {:color color}]))
-
-
-
-(fcss/root*)
