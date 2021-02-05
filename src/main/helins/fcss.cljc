@@ -240,31 +240,35 @@
 
   [sym docstring rule+]
 
-  (let [rule-2+ (mapv (fn [rule]
-                        (case (count rule)
-                          2 (let [[templatable
-                                   decl+]      rule]
-                              [(templ templatable)
-                               (-templ-decl+ decl+)])
-                          3 (let [[template
-                                   placeholder->templatable
-                                   decl+]                   rule]
-                              [(templ template
-                                      placeholder->templatable)
-                               (-templ-decl+ decl+)])))
-                      rule+)]
+  (let [rule-2+      (mapv (fn [rule]
+                             (case (count rule)
+                               2 (let [[templatable
+                                        decl+]      rule]
+                                   [(templ templatable)
+                                    (-templ-decl+ decl+)])
+                               3 (let [[template
+                                        placeholder->templatable
+                                        decl+]                   rule]
+                                   [(templ template
+                                           placeholder->templatable)
+                                    (-templ-decl+ decl+)])))
+                           rule+)
+        rule-cached+ (get-in @fcss.compiler/*rule+
+                             [(ns-name *ns*)
+                              sym])]
     (when (and (identical? medium/target-init
                            :cljs/dev)
-               (not= rule-2+
-                     (get-in @fcss.compiler/*rule+
-                             [(ns-name *ns*)
-                              sym])))
+               (or (not= docstring
+                         (:fcss/docstring (meta rule-cached+)))
+                   (not= rule-2+
+                         rule-cached+)))
       (fcss.compiler/compile-dev path
                                  sym
                                  docstring
                                  rule-2+))
     (fcss.compiler/add-rule! sym
-                             rule-2+))))
+                             (with-meta rule-2+
+                                        {:fcss/docstring docstring})))))
 
 
 
