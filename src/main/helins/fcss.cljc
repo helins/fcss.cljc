@@ -238,13 +238,37 @@
 
 
 
+(defn- -str-property
+
+  ;;
+
+  [property]
+  
+  (if (keyword? property)
+    (name property)
+    (str property)))
+
+
+
+(def ^:private -decl+
+
+  ;;
+
+  (if (identical? (medium/target-init*)
+                  :cljs/dev)
+    (sorted-map-by (fn [k-1 k-2]
+                     (compare (-str-property k-1)
+                              (-str-property k-2))))
+    {}))
+
+
+
 #?(:clj (defn- -templ-decl+
 
   ""
 
   [decl+]
 
-  (println :decl+ decl+)
   (reduce-kv #(assoc %1
                      (cond->
                        %2
@@ -256,11 +280,8 @@
                        (instance? DualName
                                   %3)
                        templ))
-             {}
+             -decl+
              decl+)))
-
-
-
 
 
 

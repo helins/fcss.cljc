@@ -46,7 +46,12 @@
 
   (let [color 'red]
     [klass
-     {:color color}])
+     {:color      color
+      :position   'relative
+      :top        0
+      :left       0
+      :display    'flex
+      :background 'purple}])
 
   (rul-coll))
 
