@@ -52,12 +52,17 @@
 
 
 
-
 (fcss/defvar bg)
+
+
 
 (fcss/defvar length
 
-  :unit %)
+  :fallback (css.unit/px 42)
+
+  ["test"
+   {length 'green
+    :color length}])
  
  
 

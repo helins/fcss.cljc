@@ -55,6 +55,17 @@
                docstring))))
 
 
+#?(:clj (defn- -docstring
+
+  ""
+
+  [arg+]
+
+  (let [arg-first (first arg+)]
+    (when (string? arg-first)
+      arg-first))))
+
+
 
 #?(:clj (defn namespaced-string
 
@@ -205,7 +216,11 @@
     ([template placeholder->templatable]
 
      (let [template-2 (-selector template)]
-       (if (map? placeholder->templatable)
+       (if (clojure.string/includes? template-2
+                                     "&")
+         (clojure.string/replace template-2
+                                 "&"
+                                 (templ placeholder->templatable))
          (reduce-kv #(clojure.string/replace %1
                                              (cond
                                                (keyword? %2) (str \$
@@ -217,10 +232,7 @@
                                                                               :template    template})))
                                              (templ %3))
                     template-2
-                    placeholder->templatable)
-         (clojure.string/replace template-2
-                                 "&"
-                                 (templ placeholder->templatable)))))))
+                    placeholder->templatable))))))
 
 
 
@@ -318,12 +330,9 @@
 
   ;;
 
-  [sym cljs-dev? docstring arg+]
+  [sym cljs-dev? docstring rule+]
 
-  (when-some [rule+ (cond->
-                      arg+
-                      docstring
-                      next)]
+  (when rule+
     (if cljs-dev?
       `(-ensure-link-node ~(format "fcss__%s__%s"
                                    (str *ns*)
@@ -353,13 +362,11 @@
     (when (or cljs-dev?
               (identical? target
                           :clojure))
-      (let [docstring  (first arg+)
-            docstring? (string? docstring)]
+      (let [docstring (-docstring arg+)]
         `(do
            ~(-rul sym
                   cljs-dev?
-                  (when docstring?
-                    docstring)
+                  docstring
                   arg+)
            (def ~(-assoc-docstring sym
                                    docstring)
@@ -368,46 +375,68 @@
                              (name sym)))))))))
 
 
+
+
+
     
 #?(:clj (defn- -defdualname
 
-    ;;
+  ;;
 
-    [env sym arg+ f-raw f-templated]
+  [env sym arg+ f-raw f-templated]
 
-    (let [docstring   (first arg+)
-          docstring-2 (when (string? docstring)
-                        docstring)
-          raw         (f-raw (namespaced-string sym))
-          target      (medium/target env)
-          cljs-dev?   (identical? target
-                                  :cljs/dev)]
-      `(do
-         (def ~(-assoc-docstring sym
-                                 docstring-2)
+  (let [docstring       (-docstring arg+)
+        [option+
+         rule+]         (loop [arg-2+  (cond->
+                                         arg+
+                                         docstring
+                                         rest)
+                               option+ nil]
+                          (if (seq arg-2+)
+                            (let [x (first arg-2+)]
+                              (if (keyword? x)
+                                (recur (drop 2
+                                             arg-2+)
+                                       (assoc option+
+                                              x
+                                              (second arg-2+)))
+                                [option+
+                                 (not-empty (vec arg-2+))]))
+                            [option+
+                             nil]))
 
-           ~(if cljs-dev?
-             `(let [raw# ~raw]
-                (.set -registry
-                      raw#
-                      ~(f-templated raw))
-                raw#)
-             (case target
-               :cljs/release raw
-               :clojure      `(->DualName ~raw
-                                          ~(f-templated raw)))))
-         ~(-rul sym
-                cljs-dev?
-                docstring-2
-                arg+)))))
+        raw             (f-raw (namespaced-string sym))
+        target          (medium/target env)
+        cljs-dev?       (identical? target
+                                    :cljs/dev)]
+    `(do
+       (def ~(-assoc-docstring sym
+                               docstring)
+
+         ~(if cljs-dev?
+           `(let [raw# ~raw]
+              (.set -registry
+                    raw#
+                    ~(f-templated raw
+                                  option+))
+              raw#)
+           (case target
+             :cljs/release raw
+             :clojure      `(->DualName ~raw
+                                        ~(f-templated raw
+                                                      option+)))))
+       ~(-rul sym
+              cljs-dev?
+              docstring
+              rule+)))))
 
 
 
-
-(defmacro ^{:arglists '([sym docstring?])}
-          defclass
+(defmacro defclass
 
   ""
+
+  {:arglists '([sym docstring?])}
 
   [sym & arg+]
 
@@ -415,15 +444,17 @@
                 sym
                 arg+
                 identity
-                #(str \.
-                      %)))
+                (fn [raw _option+]
+                  (str "."
+                       raw))))
 
 
 
-(defmacro ^{:arglists '([sym docstring?])}
-          defdata
+(defmacro defdata
 
   ""
+
+  {:arglists '([sym docstring?])}
 
   [sym & [docstring]]
 
@@ -435,10 +466,11 @@
 
 
 
-(defmacro ^{:arglists '([sym docstring?])}
-          defid
+(defmacro defid
 
   ""
+
+  {:arglists '([sym docstring?])}
 
   [sym & arg+]
 
@@ -446,15 +478,17 @@
                 sym
                 arg+
                 identity
-                #(str \#
-                      %)))
+                (fn [raw _option+]
+                  (str "#"
+                       raw))))
 
 
 
-(defmacro ^{:arglists '([sym docstring?])}
-          defname
+(defmacro defname
 
   ""
+
+  {:arglists '([sym docstring?])}
 
   [sym & [docstring]]
 
@@ -465,38 +499,29 @@
 
 
 
-(defmacro ^{:arglists '([sym docstring?])}
-          defvar
+(defmacro defvar
 
   ""
 
   {:arglists '([sym docstring? & option+])}
 
-  [sym & option+]
+  [sym & arg+]
 
-  (let [docstring  (first option+)
-        docstring? (string? docstring)]
+  (let [docstring (-docstring arg+)]
     (-defdualname &env
                   sym
-                  (when docstring?
-                    docstring)
-                  #(str "--"
-                        %)
-                  #(let [{:keys [fallback]} (cond->
-                                              option+
-                                              docstring?
-                                              rest)]
-                     (if fallback
-                       `(templ "var($name, $fallback)"
-                               {:fallback ~fallback
-                                :name     ~%})
-                       (format "var(%s)"
-                               %))))))
-
-
-
-
-
+                  arg+
+                  (fn [namespaced-string]
+                    (str "--"
+                         namespaced-string))
+                  (fn [raw option+]
+                    (let [{:keys [fallback]} option+]
+                      (if fallback
+                        `(templ "var($name, $fallback)"
+                                {:fallback ~fallback
+                                 :name     ~raw})
+                        (format "var(%s)"
+                                raw)))))))
 
 
 

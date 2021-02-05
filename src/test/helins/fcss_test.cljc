@@ -20,7 +20,7 @@
 
 (fcss/defvar css-var-2
 
-  "Docstring"
+;  "Docstring"
 
   :fallback css-var)
 
