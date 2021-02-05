@@ -28,6 +28,16 @@
 ;;;;;;;;;;
 
 
+(def ^String path
+
+  ""
+
+  "./resources/public/fcss")
+
+
+;;;;;;;;;;
+
+
 #?(:clj (defn- -assoc-docstring
 
   ;;
@@ -163,26 +173,212 @@
 
 
 
+(medium/when-target* [:cljs/dev
+                      :clojure]
+
+  (defn templ
+
+    ""
+
+    ([templatable]
+
+     (-templ templatable))
+
+
+    ([template placeholder->templatable]
+
+     (let [template-2 (if (vector? template)
+                        (clojure.string/join ","
+                                             (map templ
+                                                  template))
+                        template)]
+       (if (clojure.string/includes? template-2
+                                     "&")
+         (clojure.string/replace template-2
+                                 "&"
+                                 (templ placeholder->templatable))
+         (reduce-kv #(clojure.string/replace %1
+                                             (cond
+                                               (keyword? %2) (str \$
+                                                                  (name %2))
+                                               (number? %2)  (str \$
+                                                                  %2)
+                                               :else         (throw (ex-info "Placeholder must be keyword or number"
+                                                                             {:placeholder %2
+                                                                              :template    template})))
+                                             (templ %3))
+                    template-2
+                    placeholder->templatable))))))
+
+
+
+#?(:clj (defn- -templ-decl+
+
+  ""
+
+  [decl+]
+
+  (reduce-kv #(assoc %1
+                     (cond->
+                       %2
+                       (instance? DualName
+                                  %2)
+                       str)
+                     (cond->
+                       %3
+                       (instance? DualName
+                                  %3)
+                       templ))
+             {}
+             decl+)))
+
+
+
+#?(:clj (defn ^:no-doc -compile-rul
+
+  ;;
+
+  [sym docstring rule+]
+
+  (let [rule-2+ (mapv (fn [rule]
+                        (case (count rule)
+                          2 (let [[templatable
+                                   decl+]      rule]
+                              [(templ templatable)
+                               (-templ-decl+ decl+)])
+                          3 (let [[template
+                                   placeholder->templatable
+                                   decl+]                   rule]
+                              [(templ template
+                                      placeholder->templatable)
+                               (-templ-decl+ decl+)])))
+                      rule+)]
+    (when (and (identical? medium/target-init
+                           :cljs/dev)
+               (not= rule-2+
+                     (get-in @fcss.compiler/*rule+
+                             [(ns-name *ns*)
+                              sym])))
+      (fcss.compiler/compile-dev path
+                                 sym
+                                 docstring
+                                 rule-2+))
+    (fcss.compiler/add-rule! sym
+                             rule-2+))))
+
+
+
+(medium/when-target* [:cljs/dev]
+
+  (defn ^:no-doc -ensure-link-node
+
+    ;;
+
+    [css-id path]
+
+    (let [node (js/document.getElementById css-id)]
+      (when-not node
+        (let [node-2 (js/document.createElement "link")]
+          (set! (.-className node-2)
+                "fcss_dev_link")
+          (set! (.-href node-2)
+                path)
+          (set! (.-id node-2)
+                css-id)
+          (set! (.-rel node-2)
+                "stylesheet")
+          (.appendChild js/document.head
+                        node-2))))))
+
+
+
+#?(:clj (defn- -rul
+
+  ;;
+
+  [sym cljs-dev? docstring arg+]
+
+  (when-some [rule+ (cond->
+                      arg+
+                      docstring
+                      next)]
+    (if cljs-dev?
+      `(-ensure-link-node ~(format "fcss__%s__%s"
+                                   (str *ns*)
+                                   (name sym))
+                          ~(format "./fcss/%s/%s.css"
+                                   (str *ns*)
+                                   (name sym)))
+      (when-not (identical? medium/target-init
+                            :cljs/release)
+        `(-compile-rul '~sym
+                        ~docstring
+                        ~(vec rule+)))))))
+
+
+
+(defmacro defrul
+
+  ""
+
+  {:arglists '([sym docstring? & rule+])}
+
+  [sym & arg+]
+
+  (let [target    (medium/target &env)
+        cljs-dev? (identical? target
+                              :cljs/dev)]
+    (when (or cljs-dev?
+              (identical? target
+                          :clojure))
+      (let [docstring  (first arg+)
+            docstring? (string? docstring)]
+        `(do
+           ~(-rul sym
+                  cljs-dev?
+                  (when docstring?
+                    docstring)
+                  arg+)
+           (def ~(-assoc-docstring sym
+                                   docstring)
+
+             (quote ~(symbol (str *ns*)
+                             (name sym)))))))))
+
+
     
 #?(:clj (defn- -defdualname
 
     ;;
 
-    [env sym docstring f-raw f-templated]
+    [env sym arg+ f-raw f-templated]
 
-    (let [raw (f-raw (namespaced-string sym))]
-      `(def ~(-assoc-docstring sym
-                               docstring)
+    (let [docstring   (first arg+)
+          docstring-2 (when (string? docstring)
+                        docstring)
+          raw         (f-raw (namespaced-string sym))
+          target      (medium/target env)
+          cljs-dev?   (identical? target
+                                  :cljs/dev)]
+      `(do
+         (def ~(-assoc-docstring sym
+                                 docstring-2)
 
-         ~(case (medium/target env)
-           :cljs/dev     `(let [raw# ~raw]
-                            (.set -registry
-                                  raw#
-                                  ~(f-templated raw))
-                            raw#)
-           :cljs/release raw
-           :clojure      `(->DualName ~raw
-                                      ~(f-templated raw)))))))
+           ~(if cljs-dev?
+             `(let [raw# ~raw]
+                (.set -registry
+                      raw#
+                      ~(f-templated raw))
+                raw#)
+             (case target
+               :cljs/release raw
+               :clojure      `(->DualName ~raw
+                                          ~(f-templated raw)))))
+         ~(-rul sym
+                cljs-dev?
+                docstring-2
+                arg+)))))
+
 
 
 
@@ -191,11 +387,11 @@
 
   ""
 
-  [sym & [docstring]]
+  [sym & arg+]
 
   (-defdualname &env
                 sym
-                docstring
+                arg+
                 identity
                 #(str \.
                       %)))
@@ -222,11 +418,11 @@
 
   ""
 
-  [sym & [docstring]]
+  [sym & arg+]
 
   (-defdualname &env
                 sym
-                docstring
+                arg+
                 identity
                 #(str \#
                       %)))
@@ -277,42 +473,6 @@
 
 
 
-(medium/when-target* [:cljs/dev
-                      :clojure]
-
-  (defn templ
-
-    ""
-
-    ([templatable]
-
-     (-templ templatable))
-
-
-    ([template placeholder->templatable]
-
-     (let [template-2 (if (vector? template)
-                        (clojure.string/join ","
-                                             (map templ
-                                                  template))
-                        template)]
-       (if (clojure.string/includes? template-2
-                                     "&")
-         (clojure.string/replace template-2
-                                 "&"
-                                 (templ placeholder->templatable))
-         (reduce-kv #(clojure.string/replace %1
-                                             (cond
-                                               (keyword? %2) (str \$
-                                                                  (name %2))
-                                               (number? %2)  (str \$
-                                                                  %2)
-                                               :else         (throw (ex-info "Placeholder must be keyword or number"
-                                                                             {:placeholder %2
-                                                                              :template    template})))
-                                             (templ %3))
-                    template-2
-                    placeholder->templatable))))))
 
 
 
@@ -322,11 +482,8 @@
 
 
 
-(def ^String path
 
-  ""
 
-  "./resources/public/fcss")
 
 
 
@@ -359,27 +516,7 @@
 
 
 
-(medium/when-target* [:cljs/dev]
 
-  (defn ^:no-doc -ensure-link-node
-
-    ;;
-
-    [css-id path]
-
-    (let [node (js/document.getElementById css-id)]
-      (when-not node
-        (let [node-2 (js/document.createElement "link")]
-          (set! (.-className node-2)
-                "fcss_dev_link")
-          (set! (.-href node-2)
-                path)
-          (set! (.-id node-2)
-                css-id)
-          (set! (.-rel node-2)
-                "stylesheet")
-          (.appendChild js/document.head
-                        node-2))))))
 
 
 
@@ -417,106 +554,21 @@
 
 
 
-#?(:clj (defn- -templ-decl+
-
-  ""
-
-  [decl+]
-
-  (reduce-kv #(assoc %1
-                     (cond->
-                       %2
-                       (instance? DualName
-                                  %2)
-                       str)
-                     (cond->
-                       %3
-                       (instance? DualName
-                                  %3)
-                       templ))
-             {}
-             decl+)))
 
 
 
-#?(:clj (defn ^:no-doc -compile
-
-  ;;
-
-  [sym docstring rule+]
-
-  (let [rule-2+ (mapv (fn [rule]
-                        (case (count rule)
-                          2 (let [[templatable
-                                   decl+]      rule]
-                              [(templ templatable)
-                               (-templ-decl+ decl+)])
-                          3 (let [[template
-                                   placeholder->templatable
-                                   decl+]                   rule]
-                              [(templ template
-                                      placeholder->templatable)
-                               (-templ-decl+ decl+)])))
-                      rule+)]
-    (when (and (identical? medium/target-init
-                           :cljs/dev)
-               (not= rule-2+
-                     (get-in @fcss.compiler/*rule+
-                             [(ns-name *ns*)
-                              sym])))
-      (fcss.compiler/compile-dev path
-                                 sym
-                                 docstring
-                                 rule-2+))
-    (fcss.compiler/add-rule! sym
-                             rule-2+))))
 
 
 
-(defmacro defrul
 
-  ""
 
-  {:arglists '([sym docstring? & rule+])}
 
-  [sym & arg+]
-
-  (let [target    (medium/target &env)
-        cljs-dev? (identical? target
-                              :cljs/dev)]
-    (when (or cljs-dev?
-              (identical? target
-                          :clojure))
-      (let [docstring  (first arg+)
-            docstring? (string? docstring)]
-        `(do
-           ~(if cljs-dev?
-              `(-ensure-link-node ~(format "fcss__%s__%s"
-                                           (str *ns*)
-                                           (name sym))
-                                  ~(format "./fcss/%s/%s.css"
-                                           (str *ns*)
-                                           (name sym)))
-              (when-not (identical? medium/target-init
-                                    :cljs/release)
-                `(-compile '~sym
-                           ~(when docstring?
-                              docstring)
-                           ~(vec (cond->
-                                   arg+
-                                   docstring?
-                                   rest)))))
-           (def ~(-assoc-docstring sym
-                                   docstring)
-
-             (quote ~(symbol (str *ns*)
-                             (name sym)))))))))
 
 
 
 (medium/when-target* [:cljs/dev]
    
-  (defn -remove-link+
+  (defn ^:no-doc -remove-link+
 
     ;;
 

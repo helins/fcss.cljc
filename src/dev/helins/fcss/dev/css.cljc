@@ -16,7 +16,16 @@
 #?(:clj (println :clj-1))
 
 
-(fcss/defclass klass)
+
+(fcss/defclass klass
+
+  "Test"
+
+  (let [color 'red]
+    [klass
+     {:color color}]))
+
+
 
 (fcss/defvar bg)
 
@@ -42,11 +51,3 @@
     :width      length
     bg          fcss.dev.css-2/color
     length      50}])
-
-
-
-(fcss/defrul rul-2
-
-  (let [color 'red]
-    [klass
-     {:color color}]))
