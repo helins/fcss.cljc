@@ -82,3 +82,14 @@
     :width      length
     bg          fcss.dev.css-2/color
     length      50}])
+
+
+
+(fcss/defanim anim
+
+  "Test"
+
+  ["0%" {:opacity 0}]
+  (list ["50%"  {:opactiy 0.5}]
+        ["75%" {:opacity 0.75}])
+  ["100%" {:opacity 1}])

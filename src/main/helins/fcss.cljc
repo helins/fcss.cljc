@@ -7,12 +7,13 @@
                     [garden.color]
                     [garden.compiler]
                     [garden.core           :as garden]
-                    [garden.types          :as garden.type]
+                    [garden.stylesheet]
                     [garden.util]
                     [helins.medium         :as medium]
             #?(:clj [helins.medium.co-load :as medium.co-load])
             #?(:clj [helins.fcss.compiler  :as fcss.compiler]))
   #?(:cljs (:require-macros [helins.fcss :refer [clear*
+                                                 ;defanim
                                                  defclass
                                                  defdata
                                                  defid
@@ -25,7 +26,8 @@
                    garden.types.CSSUnit)))
 
 
-(declare templ)
+(declare ^:private -prepare-rule+
+                   templ)
 
 
 ;;;;;;;;;;
@@ -242,6 +244,7 @@
 
   [decl+]
 
+  (println :decl+ decl+)
   (reduce-kv #(assoc %1
                      (cond->
                        %2
@@ -258,31 +261,110 @@
 
 
 
+
+
+
+
+#?(:clj (defn- -prepare-anim
+
+  ""
+
+  [at-rule]
+
+  (update-in at-rule
+             [:value
+              :frames]
+             (fn [frame+]
+               (mapv (fn [[step decl+]]
+                       [step
+                        (-templ-decl+ decl+)])
+                     frame+)))))
+
+
+
+;#(:clj (defn- -prepare-media
+;
+;  ""
+;
+;  [rule]
+;
+;  (update at-rule
+;          :rules
+;          -prepare-rule+)))
+
+
+
+#?(:clj (defn- -prepare-at-rule
+
+  ;;
+
+  [{:as   at-rule
+    :keys [identifier]}]
+
+  (case identifier
+    :keyframes (-prepare-anim at-rule)
+    ;-media     (-prepare-media at-rule)
+    :else      at-rule)))
+
+
+
+#?(:clj (defn- -prepare-vector-rule
+
+  ;;
+
+  [rule]
+
+  (case (count rule)
+    2 (let [[templatable
+             decl+]      rule]
+        [(templ templatable)
+         (-templ-decl+ decl+)])
+    3 (let [[template
+             placeholder->templatable
+             decl+]                   rule]
+        [(templ template
+                placeholder->templatable)
+         (-templ-decl+ decl+)]))))
+
+
+
+
+#?(:clj (defn- -prepare-rule+
+
+  ""
+
+
+  ([rule+]
+
+   (-prepare-rule+ rule+
+                   []))
+
+
+  ([rule+ acc]
+
+   (reduce (fn [acc-2 rul]
+             (if (seq? rul)
+               (-prepare-rule+ rul
+                               acc-2)
+               (conj acc-2
+                     (cond
+                       (vector? rul)              (-prepare-vector-rule rul)
+                       (garden.util/at-rule? rul) (-prepare-at-rule rul)
+                       :else                      (throw (ex-info "CSS rule format not supported"
+                                                                  {:fcss.error/rule rul
+                                                                   :fcss.error/type :rule-format}))))))
+           acc
+           rule+))))
+
+
+
 #?(:clj (defn ^:no-doc -compile-rul
 
   ;;
 
   [sym docstring rule+]
 
-  (let [rule-2+      (into []
-                           (comp (mapcat #(if (every? vector?
-                                                      %)
-                                            %
-                                            [%]))
-                                 (filter some?)
-                                 (map (fn [rule]
-                                        (case (count rule)
-                                          2 (let [[templatable
-                                                   decl+]      rule]
-                                              [(templ templatable)
-                                               (-templ-decl+ decl+)])
-                                          3 (let [[template
-                                                   placeholder->templatable
-                                                   decl+]                   rule]
-                                              [(templ template
-                                                      placeholder->templatable)
-                                               (-templ-decl+ decl+)])))))
-                           rule+)
+  (let [rule-2+      (-prepare-rule+ rule+)
         rule-cached+ (get-in @fcss.compiler/*rule+
                              [(ns-name *ns*)
                               sym])]
@@ -385,30 +467,30 @@
 
   [env sym arg+ f-raw f-templated]
 
-  (let [docstring       (-docstring arg+)
+  (let [docstring (-docstring arg+)
         [option+
-         rule+]         (loop [arg-2+  (cond->
-                                         arg+
-                                         docstring
-                                         rest)
-                               option+ nil]
-                          (if (seq arg-2+)
-                            (let [x (first arg-2+)]
-                              (if (keyword? x)
-                                (recur (drop 2
-                                             arg-2+)
-                                       (assoc option+
-                                              x
-                                              (second arg-2+)))
-                                [option+
-                                 (not-empty (vec arg-2+))]))
-                            [option+
-                             nil]))
+         rule+]   (loop [arg-2+  (cond->
+                                   arg+
+                                   docstring
+                                   rest)
+                         option+ nil]
+                    (if (seq arg-2+)
+                      (let [x (first arg-2+)]
+                        (if (keyword? x)
+                          (recur (drop 2
+                                       arg-2+)
+                                 (assoc option+
+                                        x
+                                        (second arg-2+)))
+                          [option+
+                           (not-empty (vec arg-2+))]))
+                      [option+
+                       nil]))
 
-        raw             (f-raw (namespaced-string sym))
-        target          (medium/target env)
-        cljs-dev?       (identical? target
-                                    :cljs/dev)]
+        raw       (f-raw (namespaced-string sym))
+        target    (medium/target env)
+        cljs-dev? (identical? target
+                              :cljs/dev)]
     `(do
        (def ~(-assoc-docstring sym
                                docstring)
@@ -535,6 +617,68 @@
 
 
 
+(defn- -flatten-on-seq
+
+  ;;
+
+
+  ([coll]
+
+   (-flatten-on-seq coll
+                    []))
+
+
+  ([coll acc]
+
+   (reduce (fn [acc-2 x]
+             (if (seq? x)
+               (-flatten-on-seq x
+                                acc-2)
+               (conj acc-2
+                     x)))
+           acc
+           coll)))
+
+
+
+(defn ^:no-doc -anim
+
+  ""
+
+  [css-name frame+]
+
+  (apply garden.stylesheet/at-keyframes
+         css-name
+         (-flatten-on-seq frame+)))
+
+
+
+(defmacro defanim
+
+  ""
+
+  {:arglists '([sym docstring? frame+])}
+
+  [sym & arg+]
+
+  (let [target (medium/target &env)]
+    (when-not (identical? target
+                          :cljs/release)
+      (let [css-name  (namespaced-string sym)
+            docstring (-docstring arg+)]
+        `(do
+           ~(-rul sym
+                  (identical? (medium/target &env)
+                              :cljs/dev)
+                  docstring
+                  `[(-anim ~css-name
+                           ~(vec (cond->
+                                   arg+
+                                   docstring
+                                   rest)))])
+           (def ~(-assoc-docstring sym
+                                   docstring)
+             ~css-name))))))
 
 
 
@@ -690,16 +834,6 @@
 
 (medium/when-target* [:cljs/dev
                       :clojure]
-
-  (defn anim
-
-    ""
-
-    [string-name frame+]
-
-    (garden.type/->CSSAtRule :keyframes
-                             {:frames     frame+
-                              :identifier string-name}))
 
 
   (defprotocol IInterpolate
