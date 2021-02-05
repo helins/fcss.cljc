@@ -454,15 +454,25 @@
 
   ""
 
-  {:arglists '([sym docstring?])}
+  {:arglists '([sym docstring? rule+])}
 
-  [sym & [docstring]]
+  [sym & arg+]
 
-  `(def ~(-assoc-docstring sym
-                           docstring)
+  (let [docstring (-docstring arg+)]
+    `(do
+       (def ~(-assoc-docstring sym
+                               docstring)
 
-     ~(str "data-"
-           (namespaced-string sym))))
+         ~(str "data-"
+               (namespaced-string sym)))
+       ~(-rul sym
+              (identical? (medium/target &env)
+                          :cljs/dev)
+              docstring
+              (cond->
+                arg+
+                docstring
+                rest)))))
 
 
 

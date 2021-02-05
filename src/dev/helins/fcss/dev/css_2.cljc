@@ -14,8 +14,6 @@
 
 
 
-
-
 (fcss/defclass klass-2)
 
 
@@ -24,3 +22,13 @@
 
   [klass-2
    {:color 'orange}])
+
+
+
+(fcss/defdata data-foo
+
+  ""
+
+  ["*[&=true]"
+   data-foo
+   {:color 'red}])
