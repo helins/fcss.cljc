@@ -541,10 +541,9 @@
    (medium/not-cljs-release &env
                             &form)
    `(quote ~(let [rule+   @fcss.compiler/*rule+
-                  var-sym (resolve &env
-                                   sym)]
+                  var-sym (resolve sym)]
               (if var-sym
-                (let [sym-2 @var-sym]
+                (let [sym-2 (symbol var-sym)]
                   (get-in rule+
                           [(symbol (namespace sym-2))
                            (symbol (name sym-2))]))
