@@ -17,13 +17,39 @@
 
 
 
+(fcss/defdata data-x)
+
+
+
+(defn rul-coll
+
+  ""
+
+  []
+
+  (map identity
+       [["foo"
+         {:color 'yellow}]
+        [["bar"
+          "baz"]
+         {:position 'absolute}]
+        [["bar[&=true]"
+          "baz[&=true]"]
+         data-x
+         {:position 'relative}]]))
+
+
+
 (fcss/defclass klass
 
   "Test"
 
   (let [color 'red]
     [klass
-     {:color color}]))
+     {:color color}])
+
+  (rul-coll))
+
 
 
 

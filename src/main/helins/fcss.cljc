@@ -25,6 +25,9 @@
                    garden.types.CSSUnit)))
 
 
+(declare templ)
+
+
 ;;;;;;;;;;
 
 
@@ -173,6 +176,20 @@
 
 
 
+(defn- -selector
+
+  ;;
+
+  [selector]
+
+  (if (vector? selector)
+    (clojure.string/join ",\n"
+                         (map templ
+                              selector))
+    selector))
+
+
+
 (medium/when-target* [:cljs/dev
                       :clojure]
 
@@ -182,21 +199,13 @@
 
     ([templatable]
 
-     (-templ templatable))
+     (-templ (-selector templatable)))
 
 
     ([template placeholder->templatable]
 
-     (let [template-2 (if (vector? template)
-                        (clojure.string/join ","
-                                             (map templ
-                                                  template))
-                        template)]
-       (if (clojure.string/includes? template-2
-                                     "&")
-         (clojure.string/replace template-2
-                                 "&"
-                                 (templ placeholder->templatable))
+     (let [template-2 (-selector template)]
+       (if (map? placeholder->templatable)
          (reduce-kv #(clojure.string/replace %1
                                              (cond
                                                (keyword? %2) (str \$
@@ -208,7 +217,10 @@
                                                                               :template    template})))
                                              (templ %3))
                     template-2
-                    placeholder->templatable))))))
+                    placeholder->templatable)
+         (clojure.string/replace template-2
+                                 "&"
+                                 (templ placeholder->templatable)))))))
 
 
 
@@ -240,18 +252,24 @@
 
   [sym docstring rule+]
 
-  (let [rule-2+      (mapv (fn [rule]
-                             (case (count rule)
-                               2 (let [[templatable
-                                        decl+]      rule]
-                                   [(templ templatable)
-                                    (-templ-decl+ decl+)])
-                               3 (let [[template
-                                        placeholder->templatable
-                                        decl+]                   rule]
-                                   [(templ template
-                                           placeholder->templatable)
-                                    (-templ-decl+ decl+)])))
+  (let [rule-2+      (into []
+                           (comp (mapcat #(if (every? vector?
+                                                      %)
+                                            %
+                                            [%]))
+                                 (filter some?)
+                                 (map (fn [rule]
+                                        (case (count rule)
+                                          2 (let [[templatable
+                                                   decl+]      rule]
+                                              [(templ templatable)
+                                               (-templ-decl+ decl+)])
+                                          3 (let [[template
+                                                   placeholder->templatable
+                                                   decl+]                   rule]
+                                              [(templ template
+                                                      placeholder->templatable)
+                                               (-templ-decl+ decl+)])))))
                            rule+)
         rule-cached+ (get-in @fcss.compiler/*rule+
                              [(ns-name *ns*)
