@@ -2,7 +2,9 @@
 
   ""
 
-  (:require [helins.fcss :as fcss]))
+  (:require [garden.core       :as css]
+            [garden.stylesheet :as css.stylesheet]
+            [helins.fcss       :as fcss]))
 
 
 ;;;;;;;;;;
@@ -13,9 +15,7 @@
 (def color 'green)
 
 
-
 (fcss/defclass klass-2)
-
 
 
 (fcss/defrul my-rule
@@ -32,3 +32,13 @@
   ["*[&=true]"
    data-foo
    {:color 'red}])
+
+
+
+(fcss/defclass klass-3
+
+  (list (css.stylesheet/at-media {:screen :only}
+                                 ["$class[$data=true]"
+                                  {:class klass-3
+                                   :data  data-foo}
+                                  {:background 'green}])))

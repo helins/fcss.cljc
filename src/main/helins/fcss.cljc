@@ -303,15 +303,21 @@
 
 
 
-;#(:clj (defn- -prepare-media
-;
-;  ""
-;
-;  [rule]
-;
-;  (update at-rule
-;          :rules
-;          -prepare-rule+)))
+#?(:clj (defn- -prepare-at-generic
+
+  ""
+
+  [at-rule]
+
+  ;; For some reason, Garden needs rules to remain in a list.
+  ;; A vector will result in the declarations not being rendered.
+
+  (update-in at-rule
+             [:value
+              :rules]
+             (fn [rule+]
+               (map identity
+                    (-prepare-rule+ rule+))))))
 
 
 
@@ -324,7 +330,8 @@
 
   (case identifier
     :keyframes (-prepare-anim at-rule)
-    ;-media     (-prepare-media at-rule)
+    :media     (-prepare-at-generic at-rule)
+    :feature   (-prepare-at-generic at-rule)
     :else      at-rule)))
 
 
