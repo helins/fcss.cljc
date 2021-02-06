@@ -10,6 +10,16 @@
   (:import java.io.File))
 
 
+;;;;;;;;;;
+
+
+(def dev?
+
+  ""
+
+  true)
+
+
 ;;;;;;;;;; Miscellaneous
 
 
@@ -26,9 +36,7 @@
 ;;;;;;;;;; Central registry for CSS rules
 
 
-(def *rule+
-
-  ;;
+(defonce *rule+
 
   (atom {}))
 
@@ -77,6 +85,7 @@
 
     (re-pattern (str "(?:--)?"
                      base-pattern)))
+
 
   (def regex-tagged-class
 
@@ -129,21 +138,20 @@
 
   ""
 
-  ([path unqualified-sym docstring rule+]
+  ([path unqualified-sym]
 
    (compile-dev path
                 nil
-                unqualified-sym
-                docstring
-                rule+))
+                unqualified-sym))
 
 
-  ([path nmspace unqualified-sym docstring rule+]
+  ([path nmspace unqualified-sym]
 
-   (let [path-dir  (str path
+   (let [nmspace-2 (or nmspace
+                       *ns*)
+         path-dir  (str path
                         "/"
-                        (or nmspace
-                            *ns*))
+                        nmspace-2)
          path-file (str path-dir
                         "/"
                         (str unqualified-sym)
@@ -156,14 +164,20 @@
                          e))))
      (try
        (spit path-file
-             (cond->>
-               (garden/css rule+)
-               docstring
-               (str "/* "
-                    docstring
-                    " */"
-                    \newline
-                    \newline)))
+             (let [var-rul   (ns-resolve nmspace-2
+                                         unqualified-sym)
+                   docstring (-> var-rul
+                                 meta
+                                 :doc)]
+               (cond->>
+                 (garden/css (get @*rule+
+                                  var-rul))
+                 docstring
+                 (str "/* "
+                      docstring
+                      " */"
+                      \newline
+                      \newline))))
        (catch Throwable e
          (throw (ex-info "Unable to write CSS dev file"
                          {:helins.css.dev/path path-file}
@@ -604,11 +618,14 @@
 
   [arg+]
 
+  (alter-var-root #'dev?
+                  (constantly false))
   (let [{:as         arg-2+
          ns-entry    :fcss/entry
          path-output :fcss.path/output} (merge main-default
                                                arg+)]
-    (require ns-entry)
+    (require ns-entry
+             :reload-all)
     (let [rule+  (vec (apply concat
                              (mapcat vals
                                      (vals @*rule+))))

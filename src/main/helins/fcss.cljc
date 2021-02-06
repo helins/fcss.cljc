@@ -89,8 +89,7 @@
                      (clojure.string/replace (str unqualified-sym)
                                              #"\+$"
                                              "s"))]
-     (if (identical? medium/target-init
-                     :cljs/dev)
+     (if fcss.compiler/dev?
        string
        (str fcss.compiler/tag-begin
             string
@@ -250,19 +249,6 @@
 
 
 
-(def ^:private -decl+
-
-  ;;
-
-  (if (identical? (medium/target-init*)
-                  :cljs/dev)
-    (sorted-map-by (fn [k-1 k-2]
-                     (compare (-str-property k-1)
-                              (-str-property k-2))))
-    {}))
-
-
-
 #?(:clj (defn- -templ-decl+
 
   ""
@@ -280,7 +266,11 @@
                        (instance? DualName
                                   %3)
                        templ))
-             -decl+
+              (if fcss.compiler/dev?
+                (sorted-map-by (fn [k-1 k-2]
+                                 (compare (-str-property k-1)
+                                          (-str-property k-2))))
+                {})
              decl+)))
 
 
@@ -307,7 +297,7 @@
 
   ""
 
-  [sym at-rule]
+  [var-rul at-rule]
 
   ;; For some reason, Garden needs rules to remain in a list.
   ;; A vector will result in the declarations not being rendered.
@@ -317,7 +307,7 @@
               :rules]
              (fn [rule+]
                (map identity
-                    (-prepare-rule+ sym
+                    (-prepare-rule+ var-rul
                                     rule+))))))
 
 
@@ -326,14 +316,14 @@
 
   ;;
 
-  [sym {:as   at-rule
-        :keys [identifier]}]
+  [var-rul {:as   at-rule
+            :keys [identifier]}]
 
   (case identifier
     :keyframes (-prepare-anim at-rule)
-    :media     (-prepare-at-generic sym
+    :media     (-prepare-at-generic var-rul
                                     at-rule)
-    :feature   (-prepare-at-generic sym
+    :feature   (-prepare-at-generic var-rul
                                     at-rule)
     :else      at-rule)))
 
@@ -365,59 +355,32 @@
   ""
 
 
-  ([sym rule+]
+  ([var-rul rule+]
 
-   (-prepare-rule+ sym
+   (-prepare-rule+ var-rul
                    rule+
                    []))
 
 
-  ([sym rule+ acc]
+  ([var-rul rule+ acc]
 
    (reduce (fn [acc-2 rul]
              (if (seq? rul)
-               (-prepare-rule+ sym
+               (-prepare-rule+ var-rul
                                rul
                                acc-2)
                (conj acc-2
                      (cond
                        (vector? rul)              (-prepare-vector-rule rul)
-                       (garden.util/at-rule? rul) (-prepare-at-rule sym
+                       (garden.util/at-rule? rul) (-prepare-at-rule var-rul
                                                                     rul)
                        :else                      (throw (ex-info "CSS rule format not supported"
                                                                   {:fcss.error/namespace (ns-name *ns*)
                                                                    :fcss.error/rule      rul
-                                                                   :fcss.error/sym       sym
-                                                                   :fcss.error/type      :rule-format}))))))
+                                                                   :fcss.error/type      :rule-format
+                                                                   :fcss.error/var       var-rul}))))))
            acc
            rule+))))
-
-
-
-#?(:clj (defn ^:no-doc -compile-rul
-
-  ;;
-
-  [sym docstring rule+]
-
-  (let [rule-2+      (-prepare-rule+ sym
-                                     rule+)
-        rule-cached+ (get-in @fcss.compiler/*rule+
-                             [(ns-name *ns*)
-                              sym])]
-    (when (and (identical? medium/target-init
-                           :cljs/dev)
-               (or (not= docstring
-                         (:fcss/docstring (meta rule-cached+)))
-                   (not= rule-2+
-                         rule-cached+)))
-      (fcss.compiler/compile-dev path
-                                 sym
-                                 docstring
-                                 rule-2+))
-    (fcss.compiler/add-rule! sym
-                             (with-meta rule-2+
-                                        {:fcss/docstring docstring})))))
 
 
 
@@ -445,25 +408,48 @@
 
 
 
+
+#?(:clj (defn ^:no-doc -add-rule!
+
+  ;;
+
+  [var-rul rule+]
+
+  (swap! fcss.compiler/*rule+
+         assoc
+         var-rul
+         (-prepare-rule+ var-rul
+                         rule+))))
+
+
+
+
 #?(:clj (defn- -rul
 
   ;;
 
-  [sym cljs-dev? docstring rule+]
+  [sym target form-def rule+]
 
-  (when rule+
-    (if cljs-dev?
-      `(-ensure-link-node ~(format "fcss__%s__%s"
-                                   (str *ns*)
-                                   (name sym))
-                          ~(format "./fcss/%s/%s.css"
-                                   (str *ns*)
-                                   (name sym)))
-      (when-not (identical? medium/target-init
-                            :cljs/release)
-        `(-compile-rul '~sym
-                        ~docstring
-                        ~(vec rule+)))))))
+  (if rule+
+    (case target
+      :cljs/dev (do
+                  (fcss.compiler/compile-dev path
+                                             sym)
+                  `(do
+                     ~form-def
+                     (-ensure-link-node ~(format "fcss__%s__%s"
+                                                 (str *ns*)
+                                                 (name sym))
+                                        ~(format "./fcss/%s/%s.css"
+                                                 (str *ns*)
+                                                 (name sym)))))
+      :clojure  `(-add-rule! ~form-def
+                              ~(vec rule+))
+      nil)
+    form-def)))
+
+
+
 
 
 
@@ -475,32 +461,23 @@
 
   [sym & arg+]
 
-  (let [target    (medium/target &env)
-        cljs-dev? (identical? target
-                              :cljs/dev)]
-    (when (or cljs-dev?
-              (identical? target
-                          :clojure))
+  (let [target (medium/target &env)]
+    (when-not (identical? target
+                          :cljs/release)
       (let [docstring (-docstring arg+)]
-        `(do
-           ~(-rul sym
-                  cljs-dev?
-                  docstring
-                  (cond->
-                    arg+
-                    docstring
-                    rest))
-           (def ~(-assoc-docstring sym
-                                   docstring)
-
-             (quote ~(symbol (str *ns*)
-                             (name sym)))))))))
+        (-rul sym
+              target
+              `(def ~(-assoc-docstring sym
+                                       docstring)
+                    (quote ~(symbol (str *ns*)
+                                    (name sym))))
+              (cond->
+                arg+
+                docstring
+                rest))))))
 
 
 
-
-
-    
 #?(:clj (defn- -defdualname
 
   ;;
@@ -528,29 +505,23 @@
                        nil]))
 
         raw       (f-raw (namespaced-string sym))
-        target    (medium/target env)
-        cljs-dev? (identical? target
-                              :cljs/dev)]
-    `(do
-       (def ~(-assoc-docstring sym
-                               docstring)
-
-         ~(if cljs-dev?
-           `(let [raw# ~raw]
-              (.set -registry
-                    raw#
-                    ~(f-templated raw
-                                  option+))
-              raw#)
-           (case target
-             :cljs/release raw
-             :clojure      `(->DualName ~raw
-                                        ~(f-templated raw
-                                                      option+)))))
-       ~(-rul sym
-              cljs-dev?
-              docstring
-              rule+)))))
+        target    (medium/target env)]
+    (-rul sym
+          target
+          `(def ~(-assoc-docstring sym
+                                   docstring)
+                ~(case target
+                   :cljs/dev    `(let [raw# ~raw]
+                                   (.set -registry
+                                         raw#
+                                         ~(f-templated raw
+                                                       option+))
+                                   raw#)
+                   :cljs/release raw
+                   :clojure      `(->DualName ~raw
+                                              ~(f-templated raw
+                                                            option+))))
+          rule+))))
 
 
 

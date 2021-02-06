@@ -24,7 +24,6 @@
    {:color 'orange}])
 
 
-
 (fcss/defdata data-foo
 
   ""
