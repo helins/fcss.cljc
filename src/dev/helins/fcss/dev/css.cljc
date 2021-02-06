@@ -73,10 +73,10 @@
 
 (fcss/defrul rul-1
 
-  ;"Docstring test.
+  "Docstring test.
 
-  ; Multi-line.
-  ; Foo bar"
+   Multi-line.
+   Foo bar"
 
   ["&"
    "body"

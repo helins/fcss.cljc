@@ -53,7 +53,7 @@
     sym
     docstring
     (vary-meta assoc
-               :docstring
+               :doc
                docstring))))
 
 
@@ -307,7 +307,7 @@
 
   ""
 
-  [at-rule]
+  [sym at-rule]
 
   ;; For some reason, Garden needs rules to remain in a list.
   ;; A vector will result in the declarations not being rendered.
@@ -317,7 +317,8 @@
               :rules]
              (fn [rule+]
                (map identity
-                    (-prepare-rule+ rule+))))))
+                    (-prepare-rule+ sym
+                                    rule+))))))
 
 
 
@@ -325,13 +326,15 @@
 
   ;;
 
-  [{:as   at-rule
-    :keys [identifier]}]
+  [sym {:as   at-rule
+        :keys [identifier]}]
 
   (case identifier
     :keyframes (-prepare-anim at-rule)
-    :media     (-prepare-at-generic at-rule)
-    :feature   (-prepare-at-generic at-rule)
+    :media     (-prepare-at-generic sym
+                                    at-rule)
+    :feature   (-prepare-at-generic sym
+                                    at-rule)
     :else      at-rule)))
 
 
@@ -362,25 +365,30 @@
   ""
 
 
-  ([rule+]
+  ([sym rule+]
 
-   (-prepare-rule+ rule+
+   (-prepare-rule+ sym
+                   rule+
                    []))
 
 
-  ([rule+ acc]
+  ([sym rule+ acc]
 
    (reduce (fn [acc-2 rul]
              (if (seq? rul)
-               (-prepare-rule+ rul
+               (-prepare-rule+ sym
+                               rul
                                acc-2)
                (conj acc-2
                      (cond
                        (vector? rul)              (-prepare-vector-rule rul)
-                       (garden.util/at-rule? rul) (-prepare-at-rule rul)
+                       (garden.util/at-rule? rul) (-prepare-at-rule sym
+                                                                    rul)
                        :else                      (throw (ex-info "CSS rule format not supported"
-                                                                  {:fcss.error/rule rul
-                                                                   :fcss.error/type :rule-format}))))))
+                                                                  {:fcss.error/namespace (ns-name *ns*)
+                                                                   :fcss.error/rule      rul
+                                                                   :fcss.error/sym       sym
+                                                                   :fcss.error/type      :rule-format}))))))
            acc
            rule+))))
 
@@ -392,7 +400,8 @@
 
   [sym docstring rule+]
 
-  (let [rule-2+      (-prepare-rule+ rule+)
+  (let [rule-2+      (-prepare-rule+ sym
+                                     rule+)
         rule-cached+ (get-in @fcss.compiler/*rule+
                              [(ns-name *ns*)
                               sym])]
@@ -477,7 +486,10 @@
            ~(-rul sym
                   cljs-dev?
                   docstring
-                  arg+)
+                  (cond->
+                    arg+
+                    docstring
+                    rest))
            (def ~(-assoc-docstring sym
                                    docstring)
 
