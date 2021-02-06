@@ -13,12 +13,12 @@
             #?(:clj [helins.medium.co-load :as medium.co-load])
             #?(:clj [helins.fcss.compiler  :as fcss.compiler]))
   #?(:cljs (:require-macros [helins.fcss :refer [clear*
-                                                 ;defanim
                                                  defclass
                                                  defdata
                                                  defid
                                                  defname
                                                  defvar
+                                                 inspect*
                                                  namespaced-string*
                                                  refresh*]]))
   #?(:clj (:import java.io.File
@@ -727,12 +727,7 @@
 
 
 
-
-
-
-
-
-(defmacro rule-inspect
+(defmacro inspect*
 
   ""
 
@@ -741,28 +736,23 @@
 
    (medium/not-cljs-release &env
                             &form)
-   `(quote ~(deref fcss.compiler/*rule+)))
+   `(into (sorted-map-
+          (quote ~(reduce-kv (fn [hmap var-rul rule+]
+                                 (let [sym (symbol var-rul)]
+                                   (assoc-in hmap
+                                             [(symbol (namespace sym))
+                                              (symbol (name sym))]
+                                             rule+)))
+                               {}
+                               @fcss.compiler/*rule+)))))
 
 
   ([sym]
 
    (medium/not-cljs-release &env
                             &form)
-   `(quote ~(let [rule+   @fcss.compiler/*rule+
-                  var-sym (resolve sym)]
-              (if var-sym
-                (let [sym-2 (symbol var-sym)]
-                  (get-in rule+
-                          [(symbol (namespace sym-2))
-                           (symbol (name sym-2))]))
-                (or (get rule+
-                         sym)
-                    (get rule+
-                         (some-> (get (ns-aliases *ns*)
-                                      sym)
-                                 str
-                                 symbol))))))))
-
+   (when-some [var-rul (resolve sym)]
+     `(quote ~(@fcss.compiler/*rule+ var-rul)))))
 
 
 
