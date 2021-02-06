@@ -552,20 +552,17 @@
   [sym & arg+]
 
   (let [docstring (-docstring arg+)]
-    `(do
-       (def ~(-assoc-docstring sym
-                               docstring)
+    (-rul sym
+          (medium/target &env)
+          `(def ~(-assoc-docstring sym
+                                   docstring)
 
-         ~(str "data-"
-               (namespaced-string sym)))
-       ~(-rul sym
-              (identical? (medium/target &env)
-                          :cljs/dev)
-              docstring
-              (cond->
-                arg+
-                docstring
-                rest)))))
+             ~(str "data-"
+                   (namespaced-string sym)))
+          (cond->
+            arg+
+            docstring
+            rest))))
 
 
 
