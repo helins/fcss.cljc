@@ -5,8 +5,9 @@
   (:require [clojure.java.io]
             [clojure.pprint]
             [clojure.string]
-            [garden.core      :as garden]
-            [garden.compiler])
+            [garden.core           :as garden]
+            [garden.compiler]
+            [helins.medium.co-load :as medium.co-load])
   (:import java.io.File))
 
 
@@ -138,6 +139,7 @@
 
   ""
 
+  
   ([path unqualified-sym]
 
    (compile-dev path
@@ -155,33 +157,40 @@
          path-file (str path-dir
                         "/"
                         (str unqualified-sym)
-                        ".css")]
-     (try
-       (.mkdirs (File. path-dir))
-       (catch Throwable e
-         (throw (ex-info "Unable to create directory for dev CSS files"
-                         {:helins.css.dev/path path-dir}
-                         e))))
-     (try
-       (spit path-file
-             (let [var-rul   (ns-resolve nmspace-2
-                                         unqualified-sym)
-                   docstring (-> var-rul
-                                 meta
-                                 :doc)]
-               (cond->>
-                 (garden/css (get @*rule+
-                                  var-rul))
-                 docstring
-                 (str "/* "
-                      docstring
-                      " */"
-                      \newline
-                      \newline))))
-       (catch Throwable e
-         (throw (ex-info "Unable to write CSS dev file"
-                         {:helins.css.dev/path path-file}
-                         e)))))))
+                        ".css")
+         var-rul   (ns-resolve nmspace-2
+                               unqualified-sym)
+         sym-rul   (symbol var-rul)
+         rule+     (get @*rule+
+                        sym-rul)]
+     (when (= (-> rule+
+                  meta
+                  :fcss.co-load/compile-cycle)
+              (medium.co-load/compile-cycle))
+       (try
+         (.mkdirs (File. path-dir))
+         (catch Throwable e
+           (throw (ex-info "Unable to create directory for dev CSS files"
+                           {:fcss/path path-dir
+                            :fcss/sym  sym-rul}
+                           e))))
+       (try
+         (spit path-file
+               (let [docstring (-> var-rul
+                                   meta
+                                   :doc)]
+                 (cond->>
+                   (garden/css rule+)
+                   docstring
+                   (str "/* "
+                        docstring
+                        " */"
+                        \newline
+                        \newline))))
+         (catch Throwable e
+           (throw (ex-info "Unable to write CSS dev file"
+                           {:fcss/path path-file}
+                           e))))))))
 
 
 ;;;;;;;;;; Compiling and optimizing CSS for release

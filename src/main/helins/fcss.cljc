@@ -409,18 +409,37 @@
 
 
 
-#?(:clj (defn ^:no-doc -add-rule!
+#?(:clj (defn ^:no-doc -add-rule+!
 
   ;;
 
-  [var-rul rule+]
+  [var-rul rule-new+]
 
   (swap! fcss.compiler/*rule+
-         assoc
-         var-rul
-         (-prepare-rule+ var-rul
-                         rule+))))
-
+         (let [docstring   (-> var-rul
+                               meta
+                               :doc)
+               rule-new-2+ (-prepare-rule+ var-rul
+                                           rule-new+)
+               sym         (symbol var-rul)]
+           (if fcss.compiler/dev?
+             (fn [sym->rule+]
+               (let [rule-old+ (sym->rule+ sym)]
+                 (cond->
+                   sym->rule+
+                   (or (not= rule-new-2+
+                             rule-old+)
+                       (not= docstring
+                             (-> rule-old+
+                                 meta
+                                 :fcss/docstring)))
+                   (assoc sym
+                          (with-meta rule-new-2+
+                                     {:fcss.co-load/compile-cycle (medium.co-load/compile-cycle)
+                                      :fcss/docstring             docstring})))))
+             #(assoc %
+                     sym
+                     rule-new+))))))
 
 
 
@@ -443,7 +462,7 @@
                                         ~(format "./fcss/%s/%s.css"
                                                  (str *ns*)
                                                  (name sym)))))
-      :clojure  `(-add-rule! ~form-def
+      :clojure  `(-add-rule+! ~form-def
                               ~(vec rule+))
       nil)
     form-def)))
@@ -824,7 +843,9 @@
       `(do
          ~(-clear target)
          ~(do
-            (medium.co-load/reload-all!)
+            (reset! fcss.compiler/*rule+
+                    {})
+            (medium.co-load/clear!)
             (medium/touch-recur path-css
                                 medium/file-cljs?))))))
 
