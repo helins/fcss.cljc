@@ -11,7 +11,8 @@
                     [garden.util]
                     [helins.medium         :as medium]
             #?(:clj [helins.medium.co-load :as medium.co-load])
-            #?(:clj [helins.fcss.compiler  :as fcss.compiler]))
+            #?(:clj [helins.fcss.compiler  :as fcss.compiler])
+            #?(:clj [taoensso.timbre       :as log]))
   #?(:cljs (:require-macros [helins.fcss :refer [clear*
                                                  defclass
                                                  defdata
@@ -33,7 +34,7 @@
 ;;;;;;;;;;
 
 
-(def ^String path
+(def ^String dev-root
 
   ""
 
@@ -489,7 +490,7 @@
   (if rule+
     (case target
       :cljs/dev (do
-                  (fcss.compiler/compile-dev path
+                  (fcss.compiler/compile-dev dev-root
                                              sym)
                   `(do
                      ~form-def
@@ -841,7 +842,7 @@
 
   (reset! fcss.compiler/*rule+
           nil)
-  (let [dir (File. ^String path)]
+  (let [dir (File. dev-root)]
     (doseq [dir-ns (.listFiles dir)]
       (doseq [file-rul (.listFiles dir-ns)]
         (.delete file-rul))
@@ -1029,13 +1030,11 @@
 
 
 
-#?(:clj (defn medium-plugin
+#?(:clj (defn- -compile-finish
 
-  ""
+  ;;
 
-  {:shadow.build/stages #{:compile-finish}}
-
-  [_]
+  []
 
   (swap! fcss.compiler/*rule+
          (fn [state]
@@ -1047,9 +1046,44 @@
                            :def-cycle)
                        (fn [nspace sym _rule+]
                          (.delete (File. (format "%s/%s/%s.css"
-                                  path
-                                  nspace
-                                  sym)))))))
+                                                 dev-root
+                                                 nspace
+                                                 sym)))))))))
+
+
+
+#?(:clj (defn- -delete-dead-ns+
+
+  ;;
+
+  [{:medium.co-load/keys [unload+]}]
+
+  (doseq [nspace unload+]
+    (let [dir (File. (format "%s/%s"
+                             dev-root
+                             nspace))]
+      (when (.exists dir)
+        (log/info (format "Removing CSS dev files for unloaded namespace: %s"
+                          nspace))
+        (doseq [css-file (.listFiles dir)]
+          (.delete css-file))
+        (.delete dir))))))
+
+
+
+#?(:clj (defn medium-plugin
+
+  ""
+
+  {:shadow.build/stages #{:compile-finish}}
+
+  [{:as                param+
+    :shadow.build/keys [stage]}]
+
+  (when (identical? stage
+                    :compile-finish)
+    (-compile-finish))
+  (-delete-dead-ns+ param+)
   nil))
 
 
