@@ -399,36 +399,35 @@
 
   (defn ^:no-doc -ensure-link-node
 
-    ;;
+    ;; Storing DOM does not work as they are somewhat recreated during live reloading.
 
     [sym-ns sym-var path]
 
-    (let [k+          [:link+
-                       sym-ns
-                       sym-var]
+    (let [css-id      (str "fcss_dev__"
+                           sym-ns
+                           "__"
+                           sym-var)
           [state-old
            state-new] (swap-vals! -*state
                                   (fn [state]
-                                    (let [state-2 (update-in state
-                                                             [:def-cycle
-                                                              sym-ns]
-                                                             (fnil conj
-                                                                   #{})
-                                                             sym-var)]
-                                    (if (get-in state-2
-                                                k+)
-                                      state-2
-                                      (assoc-in state-2
-                                                k+
-                                                (js/document.createElement "link"))))))]
-      (when-not (identical? state-old
-                            state-new)
-        (let [dom-element (get-in state-new
-                                  k+)]
+                                    (-> state
+                                        (update-in [:def-cycle
+                                                    sym-ns]
+                                                   (fnil conj
+                                                         #{})
+                                                   sym-var)
+                                        (assoc-in [:link+
+                                                   sym-ns
+                                                   sym-var]
+                                                  css-id))))]
+      (when-not (js/document.getElementById css-id)
+        (let [dom-element (js/document.createElement "link")]
           (set! (.-className dom-element)
                 "fcss_dev_link")
           (set! (.-href dom-element)
                 path)
+          (set! (.-id dom-element)
+                css-id)
           (set! (.-rel dom-element)
                 "stylesheet")
           (.appendChild js/document.head
@@ -448,22 +447,33 @@
                                :doc)
                rule-new-2+ (-prepare-rule+ var-rul
                                            rule-new+)
-               sym         (symbol var-rul)]
+               sym         (symbol var-rul)
+               nspace      (symbol (namespace sym))
+               nme         (symbol (name sym))]
            (if fcss.compiler/dev?
-             (fn [sym->rule+]
-               (let [rule-old+ (sym->rule+ sym)]
+             (fn [state]
+               (let [rule-old+ (get-in state
+                                       [nspace
+                                        nme])]
                  (cond->
-                   sym->rule+
+                   (vary-meta state
+                              update-in
+                              [:def-cycle
+                               nspace]
+                              (fnil conj
+                                    #{})
+                              nme)
                    (or (not= rule-new-2+
                              rule-old+)
                        (not= docstring
                              (-> rule-old+
                                  meta
                                  :fcss/docstring)))
-                   (assoc sym
-                          (with-meta rule-new-2+
-                                     {:fcss.co-load/compile-cycle (medium.co-load/compile-cycle)
-                                      :fcss/docstring             docstring})))))
+                   (assoc-in [nspace
+                              nme]
+                             (with-meta rule-new-2+
+                                        {:fcss.co-load/compile-cycle (medium.co-load/compile-cycle)
+                                         :fcss/docstring             docstring})))))
              #(assoc %
                      sym
                      rule-new+))))))
@@ -992,28 +1002,59 @@
 ;;;;;;;;;;
 
 
+(defn- -def-cycle
+
+  ;;
+
+  [hmap def-cycle f-remove]
+
+  (reduce-kv (fn [hmap def-ns def-sym+]
+               (update hmap
+                       def-ns
+                       (fn [sym->x]
+                         (reduce-kv (fn [sym->x-2 sym x]
+                                      (if (contains? def-sym+
+                                                     sym)
+                                        sym->x-2
+                                        (do
+                                          (f-remove def-ns
+                                                    sym
+                                                    x)
+                                          (dissoc sym->x-2
+                                                  sym))))
+                                    sym->x
+                                    sym->x))))
+             hmap
+             def-cycle))
+
+
+
 #?(:clj (defn medium-plugin
 
   ""
 
-  {:shadow.build/stages #{:compile-prepare}}
+  {:shadow.build/stages #{:compile-finish}}
 
   [_]
 
+  (swap! fcss.compiler/*rule+
+         (fn [state]
+           (-def-cycle (vary-meta state
+                                  dissoc
+                                  :def-cycle)
+                       (-> state
+                           meta
+                           :def-cycle)
+                       (fn [nspace sym _rule+]
+                         (.delete (File. (format "%s/%s/%s.css"
+                                  path
+                                  nspace
+                                  sym)))))))
   nil))
 
 
 
 (medium/when-target* [:cljs/dev]
-
-  ;(defn ^:dev/before-load ^:no-doc -before-load
-
-  ;  ;;
-
-  ;  []
-  ;  
-  ;  )
-
 
   (defn ^:dev/after-load ^:no-doc -after-load
 
@@ -1030,23 +1071,11 @@
                         [])
                (assoc state
                       :def-cycle {}
-                      :link+     (reduce-kv (fn [link-2+ def-ns def-sym+]
-                                              (update link-2+
-                                                      def-ns
-                                                      (fn [sym->link]
-                                                        (reduce-kv (fn [sym->link-2 sym ^js link]
-                                                                     (if (contains? def-sym+
-                                                                                    sym)
-                                                                       sym->link-2
-                                                                       (do
-                                                                         (.remove link)
-                                                                         (dissoc sym->link-2
-                                                                                 sym))))
-                                                                   sym->link
-                                                                   sym->link))))
-                                            link+
-                                            def-cycle))))
-      )))
+                      :link+     (-def-cycle link+
+                                             def-cycle
+                                             (fn [_nspace _sym css-id]
+                                               (some-> (js/document.getElementById css-id)
+                                                       .remove)))))))))
 
 
 ;;;;;;;;;;

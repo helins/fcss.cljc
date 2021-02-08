@@ -161,8 +161,9 @@
          var-rul   (ns-resolve nmspace-2
                                unqualified-sym)
          sym-rul   (symbol var-rul)
-         rule+     (get @*rule+
-                        sym-rul)]
+         rule+     (get-in @*rule+
+                           [(symbol (namespace sym-rul))
+                            (symbol (name sym-rul))])]
      (when (= (-> rule+
                   meta
                   :fcss.co-load/compile-cycle)
