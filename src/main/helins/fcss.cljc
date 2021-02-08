@@ -963,7 +963,25 @@
             :var      (str css-var)})))
 
 
-;;;;;;;;;
+;;;;;;;;;;
+
+
+#?(:clj (defn medium-plugin
+
+  ""
+
+  {:shadow.build/stages #{:compile-prepare}}
+
+  [_]
+
+  nil))
+
+
+
+
+
+
+;;;;;;;;;;
 
 
 (defn color->hex
