@@ -40,6 +40,17 @@
   "./resources/public/fcss")
 
 
+
+(medium/when-target* [:cljs/dev]
+  
+  (defonce ^:private -*state
+
+    ;;
+
+    (atom {:def-cycle {}
+           :link+     {}})))
+
+
 ;;;;;;;;;;
 
 
@@ -390,22 +401,38 @@
 
     ;;
 
-    [css-id path]
+    [sym-ns sym-var path]
 
-    (let [node (js/document.getElementById css-id)]
-      (when-not node
-        (let [node-2 (js/document.createElement "link")]
-          (set! (.-className node-2)
+    (let [k+          [:link+
+                       sym-ns
+                       sym-var]
+          [state-old
+           state-new] (swap-vals! -*state
+                                  (fn [state]
+                                    (let [state-2 (update-in state
+                                                             [:def-cycle
+                                                              sym-ns]
+                                                             (fnil conj
+                                                                   #{})
+                                                             sym-var)]
+                                    (if (get-in state-2
+                                                k+)
+                                      state-2
+                                      (assoc-in state-2
+                                                k+
+                                                (js/document.createElement "link"))))))]
+      (when-not (identical? state-old
+                            state-new)
+        (let [dom-element (get-in state-new
+                                  k+)]
+          (set! (.-className dom-element)
                 "fcss_dev_link")
-          (set! (.-href node-2)
+          (set! (.-href dom-element)
                 path)
-          (set! (.-id node-2)
-                css-id)
-          (set! (.-rel node-2)
+          (set! (.-rel dom-element)
                 "stylesheet")
           (.appendChild js/document.head
-                        node-2))))))
-
+                        dom-element))))))
 
 
 
@@ -456,9 +483,8 @@
                                              sym)
                   `(do
                      ~form-def
-                     (-ensure-link-node ~(format "fcss__%s__%s"
-                                                 (str *ns*)
-                                                 (name sym))
+                     (-ensure-link-node (quote ~(ns-name *ns*))
+                                        (quote ~sym)
                                         ~(format "./fcss/%s/%s.css"
                                                  (str *ns*)
                                                  (name sym)))))
@@ -978,7 +1004,49 @@
 
 
 
+(medium/when-target* [:cljs/dev]
 
+  ;(defn ^:dev/before-load ^:no-doc -before-load
+
+  ;  ;;
+
+  ;  []
+  ;  
+  ;  )
+
+
+  (defn ^:dev/after-load ^:no-doc -after-load
+
+    ;;
+
+    []
+
+    (let [v*remove (volatile! nil)]
+      (swap! -*state
+             (fn [{:as   state
+                   :keys [def-cycle
+                          link+]}]
+               (vreset! v*remove
+                        [])
+               (assoc state
+                      :def-cycle {}
+                      :link+     (reduce-kv (fn [link-2+ def-ns def-sym+]
+                                              (update link-2+
+                                                      def-ns
+                                                      (fn [sym->link]
+                                                        (reduce-kv (fn [sym->link-2 sym ^js link]
+                                                                     (if (contains? def-sym+
+                                                                                    sym)
+                                                                       sym->link-2
+                                                                       (do
+                                                                         (.remove link)
+                                                                         (dissoc sym->link-2
+                                                                                 sym))))
+                                                                   sym->link
+                                                                   sym->link))))
+                                            link+
+                                            def-cycle))))
+      )))
 
 
 ;;;;;;;;;;
