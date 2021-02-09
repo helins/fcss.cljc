@@ -782,26 +782,31 @@
 
    (medium/not-cljs-release &env
                             &form)
-   `(into (sorted-map-
-          (quote ~(reduce-kv (fn [hmap var-rul rule+]
-                                 (let [sym (symbol var-rul)]
-                                   (assoc-in hmap
-                                             [(symbol (namespace sym))
-                                              (symbol (name sym))]
-                                             rule+)))
-                               {}
-                               @fcss.compiler/*rule+)))))
+   `(into (sorted-map)
+          (for [[sym-ns#
+                 hmap#]  (quote ~(deref fcss.compiler/*rule+))]
+            [sym-ns#
+             (into (sorted-map)
+                   hmap#)])))
 
 
   ([sym]
 
    (medium/not-cljs-release &env
                             &form)
-   (when-some [var-rul (resolve sym)]
-     `(quote ~(@fcss.compiler/*rule+ var-rul)))))
-
-
-
+   (let [rule+   @fcss.compiler/*rule+
+         var-rul (resolve sym)]
+     (if var-rul
+       (let [sym-resolved (symbol var-rul)]
+         `(quote ~(get-in rule+
+                          [(symbol (namespace sym-resolved))
+                           (symbol (name sym-resolved))])))
+       `(not-empty (into (sorted-map)
+                         (quote ~(or (rule+ sym)
+                                     (some->> (get (ns-aliases *ns*)
+                                                   sym)
+                                              ns-name
+                                              rule+)))))))))
 
 
 
