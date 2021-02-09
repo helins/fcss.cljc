@@ -13,15 +13,13 @@
             #?(:clj [helins.medium.co-load :as medium.co-load])
             #?(:clj [helins.fcss.compiler  :as fcss.compiler])
             #?(:clj [taoensso.timbre       :as log]))
-  #?(:cljs (:require-macros [helins.fcss :refer [clear*
-                                                 defclass
+  #?(:cljs (:require-macros [helins.fcss :refer [defclass
                                                  defdata
                                                  defid
                                                  defname
                                                  defvar
                                                  inspect*
-                                                 namespaced-string*
-                                                 refresh*]]))
+                                                 namespaced-string*]]))
   #?(:clj (:import java.io.File
                    java.nio.file.Files
                    garden.color.CSSColor

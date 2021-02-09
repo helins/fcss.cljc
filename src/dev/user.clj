@@ -4,8 +4,7 @@
 
   (:require [clojure.java.io :as io]
             [helins.fcss     :as fcss]
-            [kaocha.repl     :as kaocha.repl]
-            [vlaaad.reveal   :as reveal]))
+            [kaocha.repl     :as kaocha.repl]))
         
 
 ;;;;;;;;;;
@@ -15,6 +14,7 @@
 
 
   (do
+    (require '[vlaaad.reveal :as reveal])
     (def reveal
          (reveal/ui))
     (add-tap reveal))

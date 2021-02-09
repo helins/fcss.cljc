@@ -14,9 +14,10 @@
 
 
   :test
-  {:target    :browser-test
-   :runner-ns lambdaisland.chui.shadow.browser-runner
-   :test-dir  "resources/chui"}}
+  {:build-options {:cache-level :jars}
+   :runner-ns     lambdaisland.chui.shadow.browser-runner
+   :target        :browser-test
+   :test-dir      "resources/chui"}}
 
  :deps
  {:alias [:cljs]}

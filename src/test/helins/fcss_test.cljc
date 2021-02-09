@@ -2,11 +2,22 @@
 
   ""
 
-  (:require [clojure.string]
-            [clojure.test  :as t]
-            [garden.color]
-            [garden.units  :as garden.unit]
-            [helins.fcss   :as fcss]))
+  (:require         [clojure.string]
+                    [clojure.test         :as t]
+                    [garden.color]
+                    [garden.units         :as garden.unit]
+                    [helins.fcss          :as fcss]
+            #?(:clj [helins.fcss.compiler :as fcss.compiler])
+                    [helins.medium        :as medium]))
+
+
+;;;;;;;;;;
+
+
+(medium/when-compiling*
+
+  (alter-var-root #'fcss.compiler/dev?
+                  (constantly true)))
 
 
 ;;;;;;;;;;
@@ -154,12 +165,11 @@
 
 
 
-
 (fcss/defrul rul-test
 
   (let [bg 'green]
-    [css-class
-     {:background bg}]))
+    (list [css-class
+           {:background bg}])))
 
 
 
@@ -168,4 +178,7 @@
   (t/is (= [[(str \.
                   css-class)
              {:background 'green}]]
-           (fcss/inspect* rul-test))))
+           (fcss/inspect* rul-test)
+           #_(get-in @fcss.compiler/*rule+
+                   ['helins.fcss-test
+                    'rul-test]))))

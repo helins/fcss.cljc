@@ -11,6 +11,13 @@
 ;;;;;;;;;;
 
 
+(alter-var-root #'fcss.compiler/dev?
+                (constantly false))
+
+
+;;;;;;;;;;
+
+
 (fcss/defclass cl-0)
 (fcss/defclass cl-1)
 (fcss/defclass cl-2)
