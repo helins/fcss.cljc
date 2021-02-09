@@ -23,6 +23,7 @@
                                                  namespaced-string*
                                                  refresh*]]))
   #?(:clj (:import java.io.File
+                   java.nio.file.Files
                    garden.color.CSSColor
                    garden.types.CSSUnit)))
 
@@ -32,14 +33,6 @@
 
 
 ;;;;;;;;;;
-
-
-(def ^String dev-root
-
-  ""
-
-  "./resources/public/fcss")
-
 
 
 (medium/when-target* [:cljs/dev]
@@ -402,7 +395,7 @@
 
     ;; Storing DOM does not work as they are somewhat recreated during live reloading.
 
-    [sym-ns sym-var path]
+    [sym-ns sym-var]
 
     (let [css-id      (str "fcss_dev__"
                            sym-ns
@@ -426,7 +419,11 @@
           (set! (.-className dom-element)
                 "fcss_dev_link")
           (set! (.-href dom-element)
-                path)
+                (str "fcss/"
+                     sym-ns
+                     "/"
+                     sym-var
+                     ".css"))
           (set! (.-id dom-element)
                 css-id)
           (set! (.-rel dom-element)
@@ -490,15 +487,11 @@
   (if rule+
     (case target
       :cljs/dev (do
-                  (fcss.compiler/compile-dev dev-root
-                                             sym)
+                  (fcss.compiler/compile-dev sym)
                   `(do
                      ~form-def
                      (-ensure-link-node (quote ~(ns-name *ns*))
-                                        (quote ~sym)
-                                        ~(format "./fcss/%s/%s.css"
-                                                 (str *ns*)
-                                                 (name sym)))))
+                                        (quote ~sym))))
       :clojure  `(-add-rule+! ~form-def
                               ~(vec rule+))
       nil)
@@ -842,12 +835,13 @@
 
   (reset! fcss.compiler/*rule+
           nil)
-  (let [dir (File. dev-root)]
-    (doseq [dir-ns (.listFiles dir)]
-      (doseq [file-rul (.listFiles dir-ns)]
-        (.delete file-rul))
-      (.delete dir-ns))
-    (.delete dir))
+  (let [dir (File. fcss.compiler/dev-root)]
+    (when (.exists dir)
+      (doseq [^File dir-ns (.listFiles dir)]
+        (doseq [^File file-rul (.listFiles dir-ns)]
+          (Files/delete (.toPath file-rul)))
+        (Files/delete (.toPath dir-ns)))
+      (Files/delete (.toPath dir))))
   (when (identical? target
                     :cljs/dev)
     `(-remove-link+))))
@@ -1034,7 +1028,7 @@
 
   ;;
 
-  []
+  [_param+]
 
   (swap! fcss.compiler/*rule+
          (fn [state]
@@ -1045,10 +1039,19 @@
                            meta
                            :def-cycle)
                        (fn [nspace sym _rule+]
-                         (.delete (File. (format "%s/%s/%s.css"
-                                                 dev-root
-                                                 nspace
-                                                 sym)))))))))
+                         (try
+                           (-> (format "%s/%s/%s.css"
+                                       fcss.compiler/dev-root
+                                       nspace
+                                       sym)
+                               File.
+                               .toPath
+                               Files/delete)
+                           (catch Throwable e
+                             (log/error e
+                                        (format "While deleting CSS dev file for stale rule: %s/%s"
+                                                nspace
+                                                sym))))))))))
 
 
 
@@ -1059,15 +1062,20 @@
   [{:medium.co-load/keys [unload+]}]
 
   (doseq [nspace unload+]
-    (let [dir (File. (format "%s/%s"
-                             dev-root
-                             nspace))]
-      (when (.exists dir)
-        (log/info (format "Removing CSS dev files for unloaded namespace: %s"
-                          nspace))
-        (doseq [css-file (.listFiles dir)]
-          (.delete css-file))
-        (.delete dir))))))
+    (try
+      (let [dir (File. (format "%s/%s"
+                               fcss.compiler/dev-root
+                               nspace))]
+        (when (.exists dir)
+          (log/info (format "Removing CSS dev files for unloaded namespace: %s"
+                            nspace))
+          (doseq [css-file (.listFiles dir)]
+            (Files/delete (.toPath ^File css-file)))
+          (Files/delete (.toPath dir))))
+      (catch Throwable e
+        (log/error e
+                   (format "While deleting CSS dev files for unloaded namespace: %s"
+                           nspace)))))))
 
 
 
@@ -1080,9 +1088,9 @@
   [{:as                param+
     :shadow.build/keys [stage]}]
 
-  (when (identical? stage
-                    :compile-finish)
-    (-compile-finish))
+  (let [f (case stage
+            :compile-finish -compile-finish)]
+    (f param+))
   (-delete-dead-ns+ param+)
   nil))
 

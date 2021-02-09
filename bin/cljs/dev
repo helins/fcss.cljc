@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 
 
-clj -M:cljs:dev watch dev "$@"
+clj -M:reveal:cljs:dev watch dev "$@"

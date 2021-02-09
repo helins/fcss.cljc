@@ -33,3 +33,5 @@ resources/public/*
 !resources/public/index.html
 resources/chui/*
 !resources/chui/index.html
+
+fcss/*

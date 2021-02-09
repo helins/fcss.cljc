@@ -21,6 +21,14 @@
   true)
 
 
+
+(def ^String dev-root
+
+  ""
+
+  "fcss/dev/fcss")
+
+
 ;;;;;;;;;; Miscellaneous
 
 
@@ -140,24 +148,22 @@
   ""
 
   
-  ([path unqualified-sym]
+  ([unqualified-sym]
 
-   (compile-dev path
-                nil
+   (compile-dev nil
                 unqualified-sym))
 
 
-  ([path nmspace unqualified-sym]
+  ([nmspace unqualified-sym]
 
    (let [nmspace-2 (or nmspace
                        *ns*)
-         path-dir  (str path
-                        "/"
-                        nmspace-2)
-         path-file (str path-dir
-                        "/"
-                        (str unqualified-sym)
-                        ".css")
+         path-dir  (format "%s/%s"
+                           dev-root
+                           nmspace-2)
+         path-file (format "%s/%s.css"
+                           path-dir
+                           unqualified-sym)
          var-rul   (ns-resolve nmspace-2
                                unqualified-sym)
          sym-rul   (symbol var-rul)

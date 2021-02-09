@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 
 
-clj -M:dev:nrepl:test
+clj -M:dev:test"$@"
