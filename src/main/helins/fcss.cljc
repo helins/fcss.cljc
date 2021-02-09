@@ -826,59 +826,62 @@
     nil))
 
 
-
-#?(:clj (defn- ^:no-doc -clear
-
-  ""
-
-  [target]
-
-  (reset! fcss.compiler/*rule+
-          nil)
-  (let [dir (File. fcss.compiler/dev-root)]
-    (when (.exists dir)
-      (doseq [^File dir-ns (.listFiles dir)]
-        (doseq [^File file-rul (.listFiles dir-ns)]
-          (Files/delete (.toPath file-rul)))
-        (Files/delete (.toPath dir-ns)))
-      (Files/delete (.toPath dir))))
-  (when (identical? target
-                    :cljs/dev)
-    `(-remove-link+))))
-
-
-
-(defmacro clear*
-
-  ""
-
-  []
-
-  (let [target (medium/target &env)]
-    (when (#{:cljs/dev
-             :clojure} target)
-      (-clear target))))
-
-
-
-
-(defmacro refresh*
-
-  ""
-
-  [path-css]
-
-  (let [target (medium/target &env)]
-    (when (#{:cljs/dev
-             :clojure} target)
-      `(do
-         ~(-clear target)
-         ~(do
-            (reset! fcss.compiler/*rule+
-                    {})
-            (medium.co-load/clear!)
-            (medium/touch-recur path-css
-                                medium/file-cljs?))))))
+; <!> Currently removed from API as it might confuse users.
+;     If something is not right, it is best to simply empty the CLJS cache and restart the whole thing?
+;
+;
+; #?(:clj (defn- ^:no-doc -clear
+; 
+;   ""
+; 
+;   [target]
+; 
+;   (reset! fcss.compiler/*rule+
+;           nil)
+;   (let [dir (File. fcss.compiler/dev-root)]
+;     (when (.exists dir)
+;       (doseq [^File dir-ns (.listFiles dir)]
+;         (doseq [^File file-rul (.listFiles dir-ns)]
+;           (Files/delete (.toPath file-rul)))
+;         (Files/delete (.toPath dir-ns)))
+;       (Files/delete (.toPath dir))))
+;   (when (identical? target
+;                     :cljs/dev)
+;     `(-remove-link+))))
+; 
+; 
+; 
+; (defmacro clear*
+; 
+;   ""
+; 
+;   []
+; 
+;   (let [target (medium/target &env)]
+;     (when (#{:cljs/dev
+;              :clojure} target)
+;       (-clear target))))
+; 
+; 
+; 
+; 
+; (defmacro refresh*
+; 
+;   ""
+; 
+;   [path-css]
+; 
+;   (let [target (medium/target &env)]
+;     (when (#{:cljs/dev
+;              :clojure} target)
+;       `(do
+;          ~(-clear target)
+;          ~(do
+;             (reset! fcss.compiler/*rule+
+;                     {})
+;             (medium.co-load/clear!)
+;             (medium/touch-recur path-css
+;                                 medium/file-cljs?))))))
 
 
 
