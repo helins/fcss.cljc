@@ -2,11 +2,9 @@
 
   ""
 
-  (:require #?(:clj [clojure.edn])
-            #?(:clj [clojure.string])
+  (:require         [clojure.string]
                     [garden.color]
                     [garden.compiler]
-                    [garden.core           :as garden]
                     [garden.stylesheet]
                     [garden.util]
                     [helins.medium         :as medium]
@@ -21,9 +19,7 @@
                                                  inspect*
                                                  namespaced-string*]]))
   #?(:clj (:import java.io.File
-                   java.nio.file.Files
-                   garden.color.CSSColor
-                   garden.types.CSSUnit)))
+                   java.nio.file.Files)))
 
 
 (declare ^:private -prepare-rule+
@@ -33,14 +29,14 @@
 ;;;;;;;;;;
 
 
-(medium/when-target* [:cljs/dev]
+#?(:cljs (medium/when-target* [:cljs/dev]
   
   (defonce ^:private -*state
 
     ;;
 
     (atom {:def-cycle {}
-           :link+     {}})))
+           :link+     {}}))))
 
 
 ;;;;;;;;;;
@@ -100,7 +96,7 @@
 
 
 
-(defmacro namespaced-string*
+#?(:clj (defmacro namespaced-string*
 
   ""
 
@@ -108,7 +104,7 @@
 
   (medium/not-cljs-release &env
                            &form)
-  (namespaced-string sym))
+  (namespaced-string sym)))
 
 
 ;;;;;;;;;;
@@ -240,7 +236,7 @@
 
 
 
-(defn- -str-property
+#?(:clj (defn- -str-property
 
   ;;
 
@@ -248,7 +244,7 @@
   
   (if (keyword? property)
     (name property)
-    (str property)))
+    (str property))))
 
 
 
@@ -387,7 +383,7 @@
 
 
 
-(medium/when-target* [:cljs/dev]
+#?(:cljs (medium/when-target* [:cljs/dev]
 
   (defn ^:no-doc -ensure-link-node
 
@@ -395,23 +391,22 @@
 
     [sym-ns sym-var]
 
-    (let [css-id      (str "fcss_dev__"
-                           sym-ns
-                           "__"
-                           sym-var)
-          [state-old
-           state-new] (swap-vals! -*state
-                                  (fn [state]
-                                    (-> state
-                                        (update-in [:def-cycle
-                                                    sym-ns]
-                                                   (fnil conj
-                                                         #{})
-                                                   sym-var)
-                                        (assoc-in [:link+
-                                                   sym-ns
-                                                   sym-var]
-                                                  css-id))))]
+    (let [css-id (str "fcss_dev__"
+                      sym-ns
+                      "__"
+                      sym-var)]
+      (swap! -*state
+             (fn [state]
+               (-> state
+                   (update-in [:def-cycle
+                               sym-ns]
+                              (fnil conj
+                                    #{})
+                              sym-var)
+                   (assoc-in [:link+
+                              sym-ns
+                              sym-var]
+                             css-id))))
       (when-not (js/document.getElementById css-id)
         (let [dom-element (js/document.createElement "link")]
           (set! (.-className dom-element)
@@ -427,7 +422,7 @@
           (set! (.-rel dom-element)
                 "stylesheet")
           (.appendChild js/document.head
-                        dom-element))))))
+                        dom-element)))))))
 
 
 
@@ -500,7 +495,7 @@
 
 
 
-(defmacro defrul
+#?(:clj (defmacro defrul
 
   ""
 
@@ -521,7 +516,7 @@
               (cond->
                 arg+
                 docstring
-                rest))))))
+                rest)))))))
 
 
 
@@ -572,7 +567,7 @@
 
 
 
-(defmacro defclass
+#?(:clj (defmacro defclass
 
   ""
 
@@ -586,11 +581,11 @@
                 identity
                 (fn [raw _option+]
                   (str "."
-                       raw))))
+                       raw)))))
 
 
 
-(defmacro defdata
+#?(:clj (defmacro defdata
 
   ""
 
@@ -609,11 +604,11 @@
           (cond->
             arg+
             docstring
-            rest))))
+            rest)))))
 
 
 
-(defmacro defid
+#?(:clj (defmacro defid
 
   ""
 
@@ -627,11 +622,11 @@
                 identity
                 (fn [raw _option+]
                   (str "#"
-                       raw))))
+                       raw)))))
 
 
 
-(defmacro defname
+#?(:clj (defmacro defname
 
   ""
 
@@ -642,11 +637,11 @@
   `(def ~(-assoc-docstring sym
                            docstring)
 
-     ~(namespaced-string sym)))
+     ~(namespaced-string sym))))
 
 
 
-(defmacro defvar
+#?(:clj (defmacro defvar
 
   ""
 
@@ -654,21 +649,20 @@
 
   [sym & arg+]
 
-  (let [docstring (-docstring arg+)]
-    (-defdualname &env
-                  sym
-                  arg+
-                  (fn [namespaced-string]
-                    (str "--"
-                         namespaced-string))
-                  (fn [raw option+]
-                    (let [{:keys [fallback]} option+]
-                      (if fallback
-                        `(templ "var($name, $fallback)"
-                                {:fallback ~fallback
-                                 :name     ~raw})
-                        (format "var(%s)"
-                                raw)))))))
+  (-defdualname &env
+                sym
+                arg+
+                (fn [namespaced-string]
+                  (str "--"
+                       namespaced-string))
+                (fn [raw option+]
+                  (let [{:keys [fallback]} option+]
+                    (if fallback
+                      `(templ "var($name, $fallback)"
+                              {:fallback ~fallback
+                               :name     ~raw})
+                      (format "var(%s)"
+                              raw)))))))
 
 
 
@@ -708,7 +702,7 @@
 
 
 
-(defmacro defanim
+#?(:clj (defmacro defanim
 
   ""
 
@@ -733,7 +727,7 @@
                                    rest)))])
            (def ~(-assoc-docstring sym
                                    docstring)
-             ~css-name))))))
+             ~css-name)))))))
 
 
 
@@ -771,7 +765,7 @@
 
 
 
-(defmacro inspect*
+#?(:clj (defmacro inspect*
 
   ""
 
@@ -804,19 +798,12 @@
                                      (some->> (get (ns-aliases *ns*)
                                                    sym)
                                               ns-name
-                                              rule+)))))))))
+                                              rule+))))))))))
 
 
 
 
-
-
-
-
-
-
-
-(medium/when-target* [:cljs/dev]
+#?(:cljs (medium/when-target* [:cljs/dev]
    
   (defn ^:no-doc -remove-link+
 
@@ -826,7 +813,7 @@
 
     (doseq [dom-element (vec (js/document.getElementsByClassName "fcss_dev_link"))]
       (.remove dom-element))
-    nil))
+    nil)))
 
 
 ; <!> Currently removed from API as it might confuse users.
@@ -1102,7 +1089,7 @@
 
 
 
-(medium/when-target* [:cljs/dev]
+#?(:cljs (medium/when-target* [:cljs/dev]
 
   (defn ^:dev/after-load ^:no-doc -after-load
 
@@ -1123,7 +1110,7 @@
                                              def-cycle
                                              (fn [_nspace _sym css-id]
                                                (some-> (js/document.getElementById css-id)
-                                                       .remove)))))))))
+                                                       .remove))))))))))
 
 
 ;;;;;;;;;;
