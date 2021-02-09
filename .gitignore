@@ -35,4 +35,4 @@ resources/chui/*
 !resources/chui/index.html
 
 fcss/*
-.clj-kondo/*
+.clj-kondo/.cache

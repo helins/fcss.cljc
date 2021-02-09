@@ -148,8 +148,6 @@
 
 (t/deftest fallback
 
-  ""
-
   (t/is (= "var(test-var, 42px)"
            (fcss/fallback "test-var"
                           (garden.unit/px 42)))))

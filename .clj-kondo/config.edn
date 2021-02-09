@@ -1,0 +1,7 @@
+{:hooks {:analyze-call {helins.fcss/defanim  hooks.helins.fcss/defrul*
+                        helins.fcss/defclass hooks.helins.fcss/defrul*
+                        helins.fcss/defdata  hooks.helins.fcss/defrul*
+                        helins.fcss/defid    hooks.helins.fcss/defrul*
+                        helins.fcss/defname  hooks.helins.fcss/defrul*
+                        helins.fcss/defrul   hooks.helins.fcss/defrul*
+                        helins.fcss/defvar   hooks.helins.fcss/defrul*}}}
