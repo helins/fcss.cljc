@@ -796,7 +796,7 @@
 
   ""
 
-  [decl+]
+  [var-rul decl+]
 
   (reduce-kv (fn [decl-2+ property value]
                (assoc decl-2+
@@ -804,9 +804,14 @@
                         (do
                           (when-not (contains? css-prop+
                                                property)
-                            (log/warn (format "Maybe typo is CSS property '%s'"
-                                              property)))
-                          property)
+                            (let [{:keys [file
+                                          line]} (meta var-rul)]
+                              (log/warn (format "Maybe typo in CSS property '%s' for rule '%s' (%s, line %d)" 
+                                                property
+                                                (symbol var-rul)
+                                                file
+                                                line))))
+                            property)
                         (str property))
                       (cond->
                         value
@@ -827,7 +832,7 @@
 
   ""
 
-  [at-rule]
+  [var-rul at-rule]
 
   (update-in at-rule
              [:value
@@ -835,7 +840,8 @@
              (fn [frame+]
                (mapv (fn [[step decl+]]
                        [step
-                        (-templ-decl+ decl+)])
+                        (-templ-decl+ var-rul
+                                      decl+)])
                      frame+)))))
 
 
@@ -867,7 +873,8 @@
             :keys [identifier]}]
 
   (case identifier
-    :keyframes (-prepare-anim at-rule)
+    :keyframes (-prepare-anim var-rul
+                              at-rule)
     :media     (-prepare-at-generic var-rul
                                     at-rule)
     :feature   (-prepare-at-generic var-rul
@@ -880,19 +887,21 @@
 
   ;;
 
-  [rule]
+  [var-rul rule]
 
   (case (count rule)
     2 (let [[templatable
              decl+]      rule]
         [(templ templatable)
-         (-templ-decl+ decl+)])
+         (-templ-decl+ var-rul
+                       decl+)])
     3 (let [[template
              placeholder->templatable
              decl+]                   rule]
         [(templ template
                 placeholder->templatable)
-         (-templ-decl+ decl+)]))))
+         (-templ-decl+ var-rul
+                       decl+)]))))
 
 
 
@@ -918,7 +927,8 @@
                                acc-2)
                (conj acc-2
                      (cond
-                       (vector? rul)              (-prepare-vector-rule rul)
+                       (vector? rul)              (-prepare-vector-rule var-rul
+                                                                        rul)
                        (garden.util/at-rule? rul) (-prepare-at-rule var-rul
                                                                     rul)
                        :else                      (throw (ex-info "CSS rule format not supported"
