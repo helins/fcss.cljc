@@ -3,7 +3,8 @@
   io.helins/medium {:mvn/version "0.0.0-alpha0"}}
 
  :paths
- ["src/main"]
+ ["src/clj-kondo"
+  "src/main"]
 
  :aliases
  {:cljs

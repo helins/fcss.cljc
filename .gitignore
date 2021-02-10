@@ -35,4 +35,5 @@ resources/chui/*
 !resources/chui/index.html
 
 fcss/*
-.clj-kondo/.cache
+.clj-kondo/*
+.clj-kondo/config.edn

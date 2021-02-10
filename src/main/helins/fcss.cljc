@@ -873,8 +873,7 @@
             :keys [identifier]}]
 
   (case identifier
-    :keyframes (-prepare-anim var-rul
-                              at-rule)
+    :keyframes (-prepare-anim at-rule)
     :media     (-prepare-at-generic var-rul
                                     at-rule)
     :feature   (-prepare-at-generic var-rul

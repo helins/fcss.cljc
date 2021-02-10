@@ -1,0 +1,7 @@
+{:hooks {:analyze-call {helins.fcss/defanim  helins.fcss.clj-kondo/defrul*
+                        helins.fcss/defclass helins.fcss.clj-kondo/defrul*
+                        helins.fcss/defdata  helins.fcss.clj-kondo/defrul*
+                        helins.fcss/defid    helins.fcss.clj-kondo/defrul*
+                        helins.fcss/defname  helins.fcss.clj-kondo/defrul*
+                        helins.fcss/defrul   helins.fcss.clj-kondo/defrul*
+                        helins.fcss/defvar   helins.fcss.clj-kondo/defrul*}}}

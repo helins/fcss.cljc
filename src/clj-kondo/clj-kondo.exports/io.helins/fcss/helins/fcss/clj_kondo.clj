@@ -1,4 +1,4 @@
-(ns hooks.helins.fcss
+(ns helins.fcss.clj-kondo
 
   ""
 
