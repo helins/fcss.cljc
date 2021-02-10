@@ -36,4 +36,4 @@ resources/chui/*
 
 fcss/*
 .clj-kondo/*
-.clj-kondo/config.edn
+!.clj-kondo/config.edn
