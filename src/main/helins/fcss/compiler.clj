@@ -7,7 +7,8 @@
             [clojure.string]
             [garden.core           :as garden]
             [garden.compiler]
-            [helins.medium.co-load :as medium.co-load])
+            [helins.medium.co-load :as medium.co-load]
+            [taoensso.timbre       :as log])
   (:import java.io.File))
 
 
@@ -165,39 +166,43 @@
                            path-dir
                            unqualified-sym)
          var-rul   (ns-resolve nmspace-2
-                               unqualified-sym)
-         sym-rul   (symbol var-rul)
-         rule+     (get-in @*rule+
-                           [(symbol (namespace sym-rul))
-                            (symbol (name sym-rul))])]
-     (when (= (-> rule+
-                  meta
-                  :fcss.co-load/compile-cycle)
-              (medium.co-load/compile-cycle))
-       (try
-         (.mkdirs (File. path-dir))
-         (catch Throwable e
-           (throw (ex-info "Unable to create directory for dev CSS files"
-                           {:fcss/path path-dir
-                            :fcss/sym  sym-rul}
-                           e))))
-       (try
-         (spit path-file
-               (let [docstring (-> var-rul
-                                   meta
-                                   :doc)]
-                 (cond->>
-                   (garden/css rule+)
-                   docstring
-                   (str "/* "
-                        docstring
-                        " */"
-                        \newline
-                        \newline))))
-         (catch Throwable e
-           (throw (ex-info "Unable to write CSS dev file"
-                           {:fcss/path path-file}
-                           e))))))))
+                               unqualified-sym)]
+     (if var-rul
+       (let [sym-rul   (symbol var-rul)
+             rule+     (get-in @*rule+
+                               [(symbol (namespace sym-rul))
+                                (symbol (name sym-rul))])]
+         (when (= (-> rule+
+                      meta
+                      :fcss.co-load/compile-cycle)
+                  (medium.co-load/compile-cycle))
+           (try
+             (.mkdirs (File. path-dir))
+             (catch Throwable e
+               (throw (ex-info "Unable to create directory for dev CSS files"
+                               {:fcss/path path-dir
+                                :fcss/sym  sym-rul}
+                               e))))
+           (try
+             (spit path-file
+                   (let [docstring (-> var-rul
+                                       meta
+                                       :doc)]
+                     (cond->>
+                       (garden/css rule+)
+                       docstring
+                       (str "/* "
+                            docstring
+                            " */"
+                            \newline
+                            \newline))))
+             (catch Throwable e
+               (throw (ex-info "Unable to write CSS dev file"
+                               {:fcss/path path-file}
+                               e))))))
+       (log/error (format "Unable to resolve symbol '%s' in namespace '%s'"
+                          unqualified-sym
+                          (str nmspace-2)))))))
 
 
 ;;;;;;;;;; Compiling and optimizing CSS for release

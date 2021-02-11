@@ -95,6 +95,6 @@
   "Test"
 
   ["0%" {:opacity 0}]
-  (list ["50%"  {:opactiy 0.5}]
+  (list ["50%" {:opacity 0.5}]
         ["75%" {:opacity 0.75}])
   ["100%" {:opacity 1}])

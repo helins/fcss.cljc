@@ -421,6 +421,7 @@
       :place-items
       :place-self
       :play-during
+      :pointer-events  ;; Added manually
       :position
       :quotes
       :region-fragment
@@ -1037,15 +1038,15 @@
 
   (if rule+
     (case target
-      :cljs/dev (do
-                  (fcss.compiler/compile-dev sym)
-                  `(do
-                     ~form-def
-                     (-ensure-link-node (quote ~(ns-name *ns*))
-                                        (quote ~sym))))
-      :clojure  `(-add-rule+! ~form-def
-                              ~(vec rule+))
-      nil)
+      :cljs/dev     (do
+                      (fcss.compiler/compile-dev sym)
+                      `(do
+                         ~form-def
+                         (-ensure-link-node (quote ~(ns-name *ns*))
+                                            (quote ~sym))))
+      :cljs/release form-def
+      :clojure      `(-add-rule+! ~form-def
+                                  ~(vec rule+)))
     form-def)))
 
 
@@ -1273,25 +1274,16 @@
                           :cljs/release)
       (let [css-name  (namespaced-string sym)
             docstring (-docstring arg+)]
-        `(do
-           ~(-rul sym
-                  (identical? (medium/target &env)
-                              :cljs/dev)
-                  docstring
-                  `[(-anim ~css-name
-                           ~(vec (cond->
-                                   arg+
-                                   docstring
-                                   rest)))])
-           (def ~(-assoc-docstring sym
-                                   docstring)
-             ~css-name)))))))
-
-
-
-
-
-
+        (-rul sym
+              (medium/target &env)
+              `(def ~(-assoc-docstring sym
+                                       docstring)
+                    ~css-name)
+              `[(-anim ~css-name
+                       ~(vec(cond->
+                               arg+
+                               docstring
+                               rest)))]))))))
 
 
 
