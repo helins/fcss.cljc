@@ -10,7 +10,7 @@
 ;;;;;;;;;;
 
 
-(defn defrul*
+(defn def*
 
   ""
 

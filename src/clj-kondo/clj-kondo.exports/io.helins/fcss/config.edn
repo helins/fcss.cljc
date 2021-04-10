@@ -1,10 +1,10 @@
-{:hooks   {:analyze-call {helins.fcss/defanim  helins.fcss.clj-kondo/defrul*
-                          helins.fcss/defclass helins.fcss.clj-kondo/defrul*
-                          helins.fcss/defdata  helins.fcss.clj-kondo/defrul*
-                          helins.fcss/defid    helins.fcss.clj-kondo/defrul*
-                          helins.fcss/defname  helins.fcss.clj-kondo/defrul*
-                          helins.fcss/defrul   helins.fcss.clj-kondo/defrul*
-                          helins.fcss/defvar   helins.fcss.clj-kondo/defrul*}}
+{:hooks   {:analyze-call {helins.fcss/defanim  helins.fcss.clj-kondo/def*
+                          helins.fcss/defany   helins.fcss.clj-kondo/def*
+                          helins.fcss/defclass helins.fcss.clj-kondo/def*
+                          helins.fcss/defdata  helins.fcss.clj-kondo/def*
+                          helins.fcss/defid    helins.fcss.clj-kondo/def*
+                          helins.fcss/defname  helins.fcss.clj-kondo/def*
+                          helins.fcss/defvar   helins.fcss.clj-kondo/def*}}
  :linters {:unresolved-var {:exclude [;; Copied from https://github.com/noprompt/garden/blob/16a390186fea989e8049c00cd57f9bdd82a22fd3/src/garden/units.cljc#L291
                                       ;;
                                       garden.units/Hz

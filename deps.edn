@@ -1,5 +1,6 @@
 {:deps
  {garden/garden    {:mvn/version "1.3.10"}
+  io.helins/coload {:mvn/version "0.0.0-alpha0"}
   io.helins/medium {:mvn/version "0.0.0-alpha0"}}
 
  :paths

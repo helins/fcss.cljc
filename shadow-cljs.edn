@@ -1,13 +1,10 @@
 {:builds
  {:dev
   {:asset-path       "/js"
-   :build-hooks      [(helins.medium.co-load/shadow-cljs-hook {helins.fcss/medium-plugin {:medium.co-load/path+ ["src/dev"]}})]
+   :build-hooks      [(helins.coload/hook {helins.fcss/coload {:src ["src/dev"]}})]
    :compiler-options {:infer-externs :auto}
-   :devtools         {:after-load helins.fcss.dev/on-load
-                      :preloads   [shadow.remote.runtime.cljs.browser]}
-   :modules          {:main {:entries [helins.fcss.dev]
-                             :init-fn helins.fcss.dev/on-load
-                             }}
+   :devtools         {:preloads [shadow.remote.runtime.cljs.browser]}
+   :modules          {:main {:entries [helins.fcss.dev]}}
    :output-dir       "resources/public/js"
    :target           :browser}
 
@@ -26,5 +23,4 @@
         "resources/public"]}
  
  :nrepl
- {:port 4000}
- }
+ {:port 4000}}

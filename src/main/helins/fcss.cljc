@@ -1,16 +1,23 @@
 (ns helins.fcss
 
-  ""
+  "Defining CSS items: rules, classes, vars, ...
 
-  (:require         [clojure.string]
-                    [garden.color]
-                    [garden.compiler]
-                    [garden.stylesheet]
-                    [garden.util]
-                    [helins.medium         :as medium]
-            #?(:clj [helins.medium.co-load :as medium.co-load])
-            #?(:clj [helins.fcss.compiler  :as fcss.compiler])
-            #?(:clj [taoensso.timbre       :as log]))
+   Technically, this namespace implements most of the hot-reloading associated with
+   those items.
+  
+   Also extra utilities such as writing interpolations in pure CSS.
+
+   See README."
+
+  (:require [clojure.string]
+            [garden.color]
+            [garden.compiler]
+            [garden.stylesheet]
+            [garden.util]
+            #?(:clj [helins.coload        :as coload])
+                    [helins.medium        :as medium]
+            #?(:clj [helins.fcss.compiler :as fcss.compiler])
+            #?(:clj [taoensso.timbre      :as log]))
   #?(:cljs (:require-macros [helins.fcss :refer [defclass
                                                  defdata
                                                  defid
@@ -33,7 +40,10 @@
   
   (defonce ^:private -*state
 
+    ;; States meant for a Clojurescript dev environment.
     ;;
+    ;; Keep tracks of symbols (CSS items) defined during a recompilation cycle
+    ;; as well as what <link> nodes referencing CSS files exist.
 
     (atom {:def-cycle {}
            :link+     {}}))))
@@ -47,7 +57,11 @@
 
   (def css-prop+
 
-    "From https://www.w3.org/Style/CSS/all-properties.en.html"
+    "A set of non-exhaustive CSS properties.
+    
+     From [this list](https://www.w3.org/Style/CSS/all-properties.en.html].
+
+     Used for alerting about possible typos."
 
     #{:align-content
       :align-items
@@ -582,14 +596,12 @@
       :z-index}))
 
 
-
-
-
+;;;;;;;;;; Private helpers
 
 
 #?(:clj (defn- -assoc-docstring
 
-  ;;
+  ;; Adds a docstring to a symbol meant to be interned.
 
   [sym docstring]
 
@@ -601,9 +613,10 @@
                docstring))))
 
 
+
 #?(:clj (defn- -docstring
 
-  ""
+  ;; Returns the first argument from `arg+` if it is a docstring.
 
   [arg+]
 
@@ -612,10 +625,19 @@
       arg-first))))
 
 
+;;;;;;;;;; Namespacing symbols to strings
+
 
 #?(:clj (defn namespaced-string
 
-  ""
+  "Given a symbol, returns a string prefixing that symbol with the given namespace
+   (or the current one).
+  
+   ```clojure
+   (= \"foo__bar__ok\"
+      (namespaced-string 'foo.bar
+                         'ok))
+   ```"
 
   ([sym]
 
@@ -643,24 +665,50 @@
 
 #?(:clj (defmacro namespaced-string*
 
-  ""
+  "Macro for [[namespaced-string]].
+  
+   Meant for development, throws when used in CLJS release source."
 
   [sym]
 
-  (medium/not-cljs-release &env
-                           &form)
+  (medium/not-cljs-release*)
   (namespaced-string sym)))
 
 
-;;;;;;;;;;
+;;;;;;;;;; Templating - Private
 
 
 (medium/when-target* [:cljs/dev]
 
   (defonce ^:no-doc -registry
+
+     ;; Map of `raw name` to -> `templated name`, such as:
+     ;;
+     ;;   {"my-class" ".my-class"}
+     ;;
+     ;; See [[templ]].
    
      (js/Map.)))
 
+
+
+(defn- -selector
+
+  ;; A CSS selector is commonly a string such as ".my-class > p".
+  ;;
+  ;; In order to ease writing multi selectors, a vector of strings can be
+  ;; provided and they will be joined with ",".
+
+  [selector]
+
+  (if (vector? selector)
+    (clojure.string/join ",\n"
+                         (map templ
+                              selector))
+    selector))
+
+
+;;;;;;;;;; Templating - Protocol, implementation, and API
 
 
 (medium/when-target* [:cljs/dev
@@ -669,13 +717,14 @@
 
   (defprotocol ITemplate
 
-   ; :extend-via-metadata  true
-
-    ""
+    "Defines [[-templ]] which is a low-level function used by [[templ]]."
 
     (-templ [this]
 
-      ""))
+      "The [[templ]] function uses this, one should read about it carefully.
+
+       The common user will probably never have to implement this protocol."))
+
 
 
   (extend-protocol ITemplate
@@ -716,6 +765,7 @@
                      string))))
 
 
+
   (defrecord DualName [raw
                        templated]
 
@@ -732,26 +782,61 @@
 
 
 
-(defn- -selector
-
-  ;;
-
-  [selector]
-
-  (if (vector? selector)
-    (clojure.string/join ",\n"
-                         (map templ
-                              selector))
-    selector))
-
-
-
 (medium/when-target* [:cljs/dev
                       :clojure]
 
   (defn templ
 
-    ""
+    "Things defined using `def...` macros from this namespace usually have two representations.
+   
+     - One meant for code (eg. CSS class used in a component, such as \"my-class\")
+     - One meant for CSS rules (eg. \".my-class\")
+
+     This function serves to \"template\" that second representation.
+
+     ```clojure
+     (defclass my-class)
+
+     (= (templ my-class)
+        \".my-class\")
+     ```
+
+     This function relies on the protocol function [[-templ]] which is implemented by default for:
+
+       - Things returned by `def...` functions from this namespace
+       - Number
+       - String
+       - Object (pass through `str`)
+       - `garden.color.CSSColor`
+       - `garden.types.CSSUnit`
+
+     For instance:
+
+     ```clojure
+     (= (templ (garden.units/px 50))
+        \"50px\")
+     ```
+
+     Hence, it can be used to template strings and notably, CSS rule identifiers with placeholders.
+
+     A placeholder is a substring prefixed with `$`. If there is only one, then `&` alone can be used
+     such as: 
+
+     ```clojure
+     (= (templ \"$my-class > p\"
+               {:my-class my-class})
+
+        (templ \"$1 > p\"
+               {1 my-class})
+
+        (templ \"& > p\"
+               my-class))
+     ```
+
+     It allows for writing complex CSS selectors.
+
+     The templating itself is not particularly fast. It is meant for development and writing rules.
+     In Clojurescript, usage is forbidden outside development and rules (compilation will throw)."
 
     ([templatable]
 
@@ -780,10 +865,12 @@
                     placeholder->templatable))))))
 
 
+;;;;;;;;;; Private - Templating CSS declarations in rule definitions (later)
+
 
 #?(:clj (defn- -str-property
 
-  ;;
+  ;; Stringify a CSS property.
 
   [property]
   
@@ -795,7 +882,10 @@
 
 #?(:clj (defn- -templ-decl+
 
-  ""
+  ;; Used for templating CSS rules in definitions.
+  ;;
+  ;; Also inspects CSS properties and warns about a possible typo when they are
+  ;; unknown.
 
   [var-rul decl+]
 
@@ -827,11 +917,16 @@
              decl+)))
 
 
+;;;;;;;;;; Private - Preparing rules before prior to adding them to the global registry
+;;
+;; See [[-prepare-rule+]
 
 
 #?(:clj (defn- -prepare-anim
 
-  ""
+  ;; Prepare a Garden animation rule.
+  ;;
+  ;; Used by [[-prepare-at-rule]].
 
   [var-rul at-rule]
 
@@ -849,26 +944,31 @@
 
 #?(:clj (defn- -prepare-at-generic
 
-  ""
+  ;; Prepares a common Garden "at-rule".
+  ;;
+  ;; Used by [[-prepare-at-rule]].
 
   [var-rul at-rule]
 
-  ;; For some reason, Garden needs rules to remain in a list.
+  ;; For some reason, Garden needs rules to remain in a list (specifically).
   ;; A vector will result in the declarations not being rendered.
 
   (update-in at-rule
              [:value
               :rules]
              (fn [rule+]
-               (map identity
-                    (-prepare-rule+ var-rul
-                                    rule+))))))
+               (list* (-prepare-rule+ var-rul
+                                      rule+))))))
 
 
 
 #?(:clj (defn- -prepare-at-rule
 
+  ;; Prepares a Garden "at-rule".
   ;;
+  ;; It is a special record identifying things like CSS @keyframes.
+  ;;
+  ;; Used by [[-prepare-rule+]].
 
   [var-rul {:as   at-rule
             :keys [identifier]}]
@@ -886,7 +986,12 @@
 
 #?(:clj (defn- -prepare-vector-rule
 
+  ;; Prepares a "vector" rule, such as:
   ;;
+  ;;   [".some-class"
+  ;;    {:background :red}]
+  ;;
+  ;; Used by [[-prepare-rule+]].
 
   [var-rul rule]
 
@@ -909,7 +1014,10 @@
 
 #?(:clj (defn- -prepare-rule+
 
-  ""
+  ;; Prepares a collection of rules.
+  ;;
+  ;; Preparing essentially serves to template what needs to be templated prior to adding those
+  ;; rules to the global registry.
 
 
   ([var-rul rule+]
@@ -941,12 +1049,16 @@
            rule+))))
 
 
+;;;;;;;;;; Private - Adding new rules
+
 
 #?(:cljs (medium/when-target* [:cljs/dev]
 
   (defn ^:no-doc -ensure-link-node
 
-    ;; Storing DOM does not work as they are somewhat recreated during live reloading.
+    ;; Ensures each defined CSS symbol has a <link> node pointing to its CSS rules.
+    ;;
+    ;; (Storing <link>s does not work as they are somewhat recreated during live reloading.)
 
     [sym-ns sym-var]
 
@@ -987,7 +1099,11 @@
 
 #?(:clj (defn ^:no-doc -add-rule+!
 
+  ;; Adds rules to the rule registry.
   ;;
+  ;; On a per-symbol basis, check if new rules are different from possibly existing old ones
+  ;; and only does an update if this is true.
+  ;; This prevents unnecessary CSS recompilation and subsequent IO.
 
   [var-rul rule-new+]
 
@@ -1022,8 +1138,8 @@
                    (assoc-in [nspace
                               nme]
                              (with-meta rule-new-2+
-                                        {:fcss.co-load/compile-cycle (medium.co-load/compile-cycle)
-                                         :fcss/docstring             docstring})))))
+                                        {:fcss/compile-cycle (coload/compile-cycle)
+                                         :fcss/docstring     docstring})))))
              #(assoc %
                      sym
                      rule-new+))))))
@@ -1032,7 +1148,10 @@
 
 #?(:clj (defn- -rul
 
+  ;; Entrypoint for defining rules.
+  ;; Notably used by [[-defdualname]].
   ;;
+  ;; Ensures rules are properly compiled into CSS files and imported in HTML via <link> nodes.
 
   [sym target form-def rule+]
 
@@ -1051,12 +1170,27 @@
 
 
 
+;;;;;;;;;; CSS definitions
 
 
+#?(:clj (defmacro defany
 
-#?(:clj (defmacro defrul
+  "Defines rules for anything.
 
-  ""
+   See README.
+
+
+   ```clojure
+   (defany misc-styles
+
+     \"Various styles applying to HTML tags.\"
+
+     [\"body\"
+      {:background :green}]
+
+     [\"p\"
+      {:color :red}])
+   ```"
 
   {:arglists '([sym docstring? & rule+])}
 
@@ -1081,7 +1215,13 @@
 
 #?(:clj (defn- -defdualname
 
+  ;; Used by defining functions such as [[defclass]] or [[defid]].
   ;;
+  ;; Checks if there is a docstring in arguments and processes it if found.
+  ;;
+  ;; `f-raw`       produces a name from a [[namespaced-string]]
+  ;; `f-templated` produces a name from such a "raw" string.
+  ;; See [[defclass]] for example.
 
   [env sym arg+ f-raw f-templated]
 
@@ -1128,7 +1268,23 @@
 
 #?(:clj (defmacro defclass
 
-  ""
+  "Defines a CSS class.
+  
+   Rules can be provided and should, ideally, refer to that class.
+  
+   A special \"&\" identifier can be used for referencing it:
+  
+   ```clojure
+   (defclass my-button
+
+     \"Best button ever (optional docstring).\"
+
+     [\"&\"
+      {:background :pink
+       :color      :orange}]
+     [\"& > span\"
+      {:font-size \"0.75rem\"}])
+   ```"
 
   {:arglists '([sym docstring?])}
 
@@ -1146,7 +1302,19 @@
 
 #?(:clj (defmacro defdata
 
-  ""
+  "Defines a CSS data property.
+
+   See [[defclass]] for the meaning of `&`.
+  
+   ```clojure
+   (defdata visible?
+
+            [\"div[&=true]\"
+             {:display :block]
+
+            [\"div[&=false]\"
+             {:display :none])
+   ```"
 
   {:arglists '([sym docstring? rule+])}
 
@@ -1169,7 +1337,11 @@
 
 #?(:clj (defmacro defid
 
-  ""
+  "Defines a CSS id.
+
+   CSS ids are not adviced in modern CSS.
+
+   See [[defclass]] for similar example."
 
   {:arglists '([sym docstring?])}
 
@@ -1187,7 +1359,10 @@
 
 #?(:clj (defmacro defname
 
-  ""
+  "Low-level, seldom used.
+
+   Uses [[namespaced-string]] to define such a string for a symbol,
+   resulting in a unque name."
 
   {:arglists '([sym docstring?])}
 
@@ -1202,7 +1377,15 @@
 
 #?(:clj (defmacro defvar
 
-  ""
+  "Defines a CSS variable.
+  
+   Available option is `:fallback` which provides a fallback value when
+   the variable is not defined.
+
+   ```clojure
+   (defvar my-var
+           :fallback 0)
+   ```"
 
   {:arglists '([sym docstring? & option+])}
 
@@ -1224,10 +1407,12 @@
                               raw)))))))
 
 
+;;;;;;;;;; CSS definitions - Animations
+
 
 (defn- -flatten-on-seq
 
-  ;;
+  ;; A flatten a collection for each element that passes `seq?`.
 
 
   ([coll]
@@ -1263,7 +1448,9 @@
 
 #?(:clj (defmacro defanim
 
-  ""
+  "Defines an animation.
+  
+   See README."
 
   {:arglists '([sym docstring? frame+])}
 
@@ -1280,7 +1467,7 @@
                                        docstring)
                     ~css-name)
               `[(-anim ~css-name
-                       ~(vec(cond->
+                       ~(vec (cond->
                                arg+
                                docstring
                                rest)))]))))))
@@ -1288,14 +1475,12 @@
 
 
 
-
+;;;;;;;;;; TODO. Remove
 
 
 #?(:clj (defn rule
 
-    ""
-
-    ;; TODO. Remove
+    ;; Obsolete but used by tests.
 
     ([templatable style]
 
@@ -1310,20 +1495,24 @@
       style])))
 
 
-
-
-
+;;;;;;;;;;
 
 
 #?(:clj (defmacro inspect*
 
-  ""
+  "Meant for the REPL.
+  
+   Either from Clojure from Clojurescript, retrieves one or several defined CSS rules.
+  
+   No arguments will return the whole map of `namespace` -> (`name` -> `rules`).
+  
+   A qualified symbol returns the rules for that symbol, an unqualified one is considered to be
+   a namespaced and returns a map of `name` -> `rules`"
 
 
   ([]
 
-   (medium/not-cljs-release &env
-                            &form)
+   (medium/not-cljs-release*)
    `(into (sorted-map)
           (for [[sym-ns#
                  hmap#]  (quote ~(deref fcss.compiler/*rule+))]
@@ -1334,8 +1523,7 @@
 
   ([sym]
 
-   (medium/not-cljs-release &env
-                            &form)
+   (medium/not-cljs-release*)
    (let [rule+   @fcss.compiler/*rule+
          var-rul (resolve sym)]
      (if var-rul
@@ -1351,96 +1539,64 @@
                                               rule+))))))))))
 
 
-
-
-#?(:cljs (medium/when-target* [:cljs/dev]
-   
-  (defn ^:no-doc -remove-link+
-
-    ;;
-
-    []
-
-    (doseq [dom-element (vec (js/document.getElementsByClassName "fcss_dev_link"))]
-      (.remove dom-element))
-    nil)))
-
-
-; <!> Currently removed from API as it might confuse users.
-;     If something is not right, it is best to simply empty the CLJS cache and restart the whole thing?
-;
-;
-; #?(:clj (defn- ^:no-doc -clear
-; 
-;   ""
-; 
-;   [target]
-; 
-;   (reset! fcss.compiler/*rule+
-;           nil)
-;   (let [dir (File. fcss.compiler/dev-root)]
-;     (when (.exists dir)
-;       (doseq [^File dir-ns (.listFiles dir)]
-;         (doseq [^File file-rul (.listFiles dir-ns)]
-;           (Files/delete (.toPath file-rul)))
-;         (Files/delete (.toPath dir-ns)))
-;       (Files/delete (.toPath dir))))
-;   (when (identical? target
-;                     :cljs/dev)
-;     `(-remove-link+))))
-; 
-; 
-; 
-; (defmacro clear*
-; 
-;   ""
-; 
-;   []
-; 
-;   (let [target (medium/target &env)]
-;     (when (#{:cljs/dev
-;              :clojure} target)
-;       (-clear target))))
-; 
-; 
-; 
-; 
-; (defmacro refresh*
-; 
-;   ""
-; 
-;   [path-css]
-; 
-;   (let [target (medium/target &env)]
-;     (when (#{:cljs/dev
-;              :clojure} target)
-;       `(do
-;          ~(-clear target)
-;          ~(do
-;             (reset! fcss.compiler/*rule+
-;                     {})
-;             (medium.co-load/clear!)
-;             (medium/touch-recur path-css
-;                                 medium/file-cljs?))))))
-
+;;;;;;;;;; CSS Interpolation
 
 
 (medium/when-target* [:cljs/dev
                       :clojure]
 
+  ;; Should not be useful besides for defining rules.
+  ;;
+  ;; Forbidding usage in CLJS release ensures that types are not implemented unnecessarily, which would
+  ;; also mean banning those Garden utilities from dead code elimination.
+
+
 
   (defprotocol IInterpolate
   
-    ""
+    "Defines only one function types can implement for doing CSS interpolation."
   
-    (interpolate [from this css-var]
+    (interpolate [from to css-var]
   
-      ""))
+      "CSS interpolation is about generating a string that leverages the CSS `calc` function for computing
+       a transition between two values, such as two Garden colors.
+     
+       That transition depends on a CSS variable (either a string or the result of [[defvar]]), which have
+       to be a value between 0 and 1 acting as a percentage.
+
+       For example, two numbers:
+
+       ```clojure
+       (= (interpolate 0
+                       255
+                       \"--my-css-var\")
+
+          \"calc(0 + ((255 - 0) * --my-css-var))\")
+       ```
+
+       More complex, two Garden colors:
+
+       ```clojure
+       (defvar some-percentage)
+
+       (interpolate (garden.color/rgb 100 123 125)
+                    (garden.color/hsl 278 0.2 0.3)
+                    some-percentage)
+       ```
+
+       Already implemented for:
+
+       - Numbers
+       - Strings of your choice, are not processed
+       - `garden.color.CSSColor`
+       - `garden.color.CSSUnit`
+       - Any object implementing [[ITemplate]]"))
   
   
+
   (defn- -default-interpolate
   
-    ;;
+    ;; Interpolation scheme used by several types.
   
     [from to css-var]
   
@@ -1449,6 +1605,7 @@
             :to   to
             :var  css-var}))
   
+
   
   (extend-protocol IInterpolate
   
@@ -1526,9 +1683,19 @@
                                     css-var))]))
 
 
+
   (defn fallback
 
-    ""
+    "Generates a string providing a fallback value for a var (which is  either a string
+     or the result of [[defvar]]).
+    
+     ```clojure
+     (defvar foo)
+
+     (= (fallback \"--foo\"
+                  42)
+        \"var(--foo, 42)\")
+     ```"
 
     [css-var fallback-value]
 
@@ -1537,12 +1704,18 @@
             :var      (str css-var)})))
 
 
-;;;;;;;;;;
+;;;;;;;;;; Plugin for Medium hook - Private
 
 
 (defn- -def-cycle
 
+  ;; Process a definition cycle (ie. a map of `namespace` -> `set of symbols` defined
+  ;; during the current compilation cycle).
   ;;
+  ;; `f-remove` is a side-effect producing function applied to all previously defined symbols
+  ;; not defined in the current cycle (meaning they have been removed).
+  ;;
+  ;; See [[-compile-finish]] and [[-after-load]].
 
   [hmap def-cycle f-remove]
 
@@ -1569,7 +1742,11 @@
 
 #?(:clj (defn- -compile-finish
 
+  ;; Used by [[coload]].
   ;;
+  ;; Processes Shadow-CLJS `:compile-finish` compilation stage.
+  ;;
+  ;; This deletes CSS files for symbols that are not defined anymore.
 
   [_param+]
 
@@ -1597,13 +1774,28 @@
                                                 sym))))))))))
 
 
+;;;;;;;;;; Plugin for Medium hook - Public
 
-#?(:clj (defn- -delete-dead-ns+
+
+#?(:clj (defn coload
+
+  "Plugin for Medium Hook.
+  
+   See README."
+
+  {:shadow.build/stages #{:compile-finish}}
+
+  [{:as                param+
+    :coload/keys       [unload+]
+    :shadow.build/keys [stage]}]
+
+  (let [f (case stage
+            :compile-finish -compile-finish)]
+    (f param+))
 
   ;;
-
-  [{:medium.co-load/keys [unload+]}]
-
+  ;; Deleting namespaces that are unloaded and never reloaded (ie. deleted).
+  ;;
   (doseq [nspace unload+]
     (try
       (let [dir (File. (format "%s/%s"
@@ -1618,32 +1810,20 @@
       (catch Throwable e
         (log/error e
                    (format "While deleting CSS dev files for unloaded namespace: %s"
-                           nspace)))))))
-
-
-
-#?(:clj (defn medium-plugin
-
-  ""
-
-  {:shadow.build/stages #{:compile-finish}}
-
-  [{:as                param+
-    :shadow.build/keys [stage]}]
-
-  (let [f (case stage
-            :compile-finish -compile-finish)]
-    (f param+))
-  (-delete-dead-ns+ param+)
+                           nspace)))))
   nil))
 
+
+;;;;;;;;;; Deleting ununsed <link> nodes during dev
 
 
 #?(:cljs (medium/when-target* [:cljs/dev]
 
   (defn ^:dev/after-load ^:no-doc -after-load
 
+    ;; Lifecycle hook for Shadow-CLJS which deletes <link> nodes referencing removed CSS files.
     ;;
+    ;; Different from a build hook, this is executed in CLJS
 
     []
 
@@ -1661,30 +1841,3 @@
                                              (fn [_nspace _sym css-id]
                                                (some-> (js/document.getElementById css-id)
                                                        .remove))))))))))
-
-
-;;;;;;;;;;
-
-
-(defn color->hex
-
-  ""
-
-  ;; TODO. PR to Garden.
-
-  [color]
-
-  (let [alpha (color :alpha)
-        hex   (garden.color/as-hex color)]
-    (cond->
-      hex
-      alpha
-      (do
-        (let [append (-> (Math/round (double (* alpha
-                                                255)))
-                         (garden.util/int->string 16))]
-          (str hex
-               (when (= (count append)
-                        1)
-                 "0")
-               append))))))

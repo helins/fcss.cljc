@@ -18,7 +18,7 @@
 (fcss/defclass klass-2)
 
 
-(fcss/defrul my-rule
+(fcss/defany my-rule
 
   [klass-2
    {:color 'orange}])

@@ -71,7 +71,7 @@
  
  
 
-(fcss/defrul rul-1
+(fcss/defany rul-1
 
   "Docstring test.
 

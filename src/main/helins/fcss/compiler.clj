@@ -5,10 +5,10 @@
   (:require [clojure.java.io]
             [clojure.pprint]
             [clojure.string]
-            [garden.core           :as garden]
+            [garden.core      :as garden]
             [garden.compiler]
-            [helins.medium.co-load :as medium.co-load]
-            [taoensso.timbre       :as log])
+            [helins.coload    :as coload]
+            [taoensso.timbre  :as log])
   (:import java.io.File))
 
 
@@ -174,8 +174,8 @@
                                 (symbol (name sym-rul))])]
          (when (= (-> rule+
                       meta
-                      :fcss.co-load/compile-cycle)
-                  (medium.co-load/compile-cycle))
+                      :fcss/compile-cycle)
+                  (coload/compile-cycle))
            (try
              (.mkdirs (File. path-dir))
              (catch Throwable e
