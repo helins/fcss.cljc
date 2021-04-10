@@ -1,7 +1,0 @@
-#!/usr/bin/env sh
-
-
-mkdir -p .clj-kondo
-clj-kondo --no-warnings --parallel --lint "$(clojure -Spath)"
-rm -rf .clj-kondo/io.helins
-cp -r src/clj-kondo/clj-kondo.exports/io.helins .clj-kondo/

@@ -3,7 +3,7 @@
 ;; file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 
-(ns helins.fcss-test
+(ns helins.fcss.test
 
   ""
 
@@ -158,12 +158,12 @@
 
 (t/deftest string-ready
 
-  (t/is (= "helins__fcss-test__css-class"
+  (t/is (= "helins__fcss__test__css-class"
            css-class))))
 
 
 
-(fcss/defrul rul-test
+(fcss/defany rul-test
 
   (let [bg 'green]
     (list [css-class
@@ -171,12 +171,9 @@
 
 
 
-(t/deftest defrul
+(t/deftest defany
 
   (t/is (= [[(str \.
                   css-class)
              {:background 'green}]]
-           (fcss/inspect* rul-test)
-           #_(get-in @fcss.compiler/*rule+
-                   ['helins.fcss-test
-                    'rul-test]))))
+           (fcss/inspect* rul-test))))

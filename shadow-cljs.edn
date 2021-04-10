@@ -1,19 +1,17 @@
 {:builds
  {:dev
-  {:asset-path       "/js"
-   :build-hooks      [(helins.coload/hook {helins.fcss/coload {:src ["src/dev"]}})]
-   :compiler-options {:infer-externs :auto}
-   :devtools         {:preloads [shadow.remote.runtime.cljs.browser]}
-   :modules          {:main {:entries [helins.fcss.dev]}}
-   :output-dir       "resources/public/js"
-   :target           :browser}
+  {:asset-path  "/js"
+   :build-hooks [(helins.coload/hook {helins.fcss/coload {:src ["src/dev"]}})]
+   :modules     {:main {:entries [helins.fcss.dev]}}
+   :output-dir  "cljs/js"
+   :target      :browser}
 
-
-  :test
-  {:build-options {:cache-level :jars}
-   :runner-ns     lambdaisland.chui.shadow.browser-runner
-   :target        :browser-test
-   :test-dir      "resources/chui"}}
+ :test-node
+ {:build-options    {:cache-level :jars}
+  :compiler-options {:reader-features #{:node}}
+  :ns-regexp        ".+"
+  :output-to        "compiled/node/test.js"
+  :target           :node-test}}
 
  :deps
  {:alias [:cljs]}
@@ -23,4 +21,4 @@
         "resources/public"]}
  
  :nrepl
- {:port 4000}}
+ {:port 14563}}

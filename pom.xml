@@ -6,7 +6,7 @@
   <version>0.0.0-alpha0</version>
   <name>FCSS</name>
   <description>Idiomatic functional CSS</description>
-  <url>https://github.com/helins-io/fcss.cljc</url>
+  <url>https://github.com/helins/fcss.cljc</url>
   <licenses>
     <license>
       <name>Mozilla Public License Version 2.0</name>
@@ -16,12 +16,14 @@
   <developers>
     <developer>
       <name>Adam Helinski</name>
+      <email>adam@helins.io</email>
+      <url>http://www.helins.io</url>
     </developer>
   </developers>
   <scm>
-    <url>https://github.com/helins-io/fcss.cljc</url>
-    <connection>scm:git:git://github.com/helins-io/fcss.cljc.git</connection>
-    <developerConnection>scm:git:ssh://git@github.com/helins-io/fcss.cljc.git</developerConnection>
+    <url>https://github.com/helins/fcss.cljc</url>
+    <connection>scm:git:git://github.com/helins/fcss.cljc.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/helins/fcss.cljc.git</developerConnection>
     <tag>HEAD</tag>
   </scm>
   <dependencies>
@@ -46,9 +48,6 @@
       <version>1.3.10</version>
     </dependency>
   </dependencies>
-  <build>
-    <sourceDirectory>src/clj-kondo</sourceDirectory>
-  </build>
   <repositories>
     <repository>
       <id>clojars</id>
@@ -62,4 +61,7 @@
       <url>https://clojars.org/repo</url>
     </repository>
   </distributionManagement>
+  <build>
+    <sourceDirectory>src/main</sourceDirectory>
+  </build>
 </project>

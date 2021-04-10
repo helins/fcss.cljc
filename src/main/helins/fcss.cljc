@@ -1067,38 +1067,43 @@
 
     [sym-ns sym-var]
 
-    (let [css-id (str "fcss_dev__"
-                      sym-ns
-                      "__"
-                      sym-var)]
-      (swap! -*state
-             (fn [state]
-               (-> state
-                   (update-in [:def-cycle
-                               sym-ns]
-                              (fnil conj
-                                    #{})
-                              sym-var)
-                   (assoc-in [:link+
+
+
+
+
+    #?(:node nil
+       :cljs (let [css-id (str "fcss_dev__"
+                               sym-ns
+                               "__"
+                               sym-var)]
+               (swap! -*state
+                      (fn [state]
+                        (-> state
+                            (update-in [:def-cycle
+                                        sym-ns]
+                                       (fnil conj
+                                             #{})
+                                       sym-var)
+                            (assoc-in [:link+
+                                       sym-ns
+                                       sym-var]
+                                      css-id))))
+               (when-not (js/document.getElementById css-id)
+                 (let [dom-element (js/document.createElement "link")]
+                   (set! (.-className dom-element)
+                         "fcss_dev_link")
+                   (set! (.-href dom-element)
+                         (str "fcss/"
                               sym-ns
-                              sym-var]
-                             css-id))))
-      (when-not (js/document.getElementById css-id)
-        (let [dom-element (js/document.createElement "link")]
-          (set! (.-className dom-element)
-                "fcss_dev_link")
-          (set! (.-href dom-element)
-                (str "fcss/"
-                     sym-ns
-                     "/"
-                     sym-var
-                     ".css"))
-          (set! (.-id dom-element)
-                css-id)
-          (set! (.-rel dom-element)
-                "stylesheet")
-          (.appendChild js/document.head
-                        dom-element)))))))
+                              "/"
+                              sym-var
+                              ".css"))
+                   (set! (.-id dom-element)
+                         css-id)
+                   (set! (.-rel dom-element)
+                         "stylesheet")
+                   (.appendChild js/document.head
+                                 dom-element))))))))
 
 
 
@@ -1314,11 +1319,11 @@
    ```clojure
    (defdata visible?
 
-            [\"div[&=true]\"
-             {:display :block]
+     [\"div[&=true]\"
+      {:display :block]
 
-            [\"div[&=false]\"
-             {:display :none])
+     [\"div[&=false]\"
+      {:display :none])
    ```"
 
   {:arglists '([sym docstring? rule+])}
