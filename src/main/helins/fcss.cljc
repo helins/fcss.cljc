@@ -900,10 +900,10 @@
                                                 line))))
                             property)
                         (str property))
-                      (cond->>
-                        value
-                        (vector? value)
-                        (apply templ))))
+                      (if (vector? value)
+                        (apply templ
+                               value)
+                        (templ value))))
               (if fcss.compiler/dev?
                 (sorted-map-by (fn [k-1 k-2]
                                  (compare (-str-property k-1)
@@ -1677,9 +1677,9 @@
 
   [css-var fallback-value]
 
-  (templ "var($var, $fallback)"
-         {:fallback fallback-value
-          :var      (str css-var)})))
+  (format "var(%s, %s)"
+          css-var
+          (templ fallback-value))))
 
 
 ;;;;;;;;;; Plugin for Medium hook - Private

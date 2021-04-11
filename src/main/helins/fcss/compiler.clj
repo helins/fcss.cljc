@@ -217,7 +217,6 @@
 
   ""
 
-  ;; TODO. Ensure declaration equality by already compiling them.
   ;; TODO. Provide genuine support for vector selectors.
 
   [{:as   ctx
@@ -536,6 +535,7 @@
                  [class-name
                   (clojure.string/join " "
                                        munged+)]))))
+
 
 
 (defn write-file+

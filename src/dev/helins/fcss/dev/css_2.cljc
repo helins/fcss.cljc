@@ -7,9 +7,9 @@
 
   ""
 
-  (:require [garden.core       :as css]
-            [garden.stylesheet :as css.stylesheet]
-            [helins.fcss       :as fcss]))
+  (:require #?(:clj [garden.color      :as css.color])
+            #?(:clj [garden.stylesheet :as css.stylesheet])
+            [helins.fcss               :as fcss]))
 
 
 ;;;;;;;;;;
@@ -46,4 +46,4 @@
                                  ["$class[$data=true]"
                                   {:class klass-3
                                    :data  data-foo}
-                                  {:background 'green}])))
+                                  {:background (css.color/hsl 150 0.5 0.5)}])))

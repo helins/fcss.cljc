@@ -9,10 +9,10 @@
 
   {:author "Adam Helinski"}
 
-  (:require         [garden.units          :as css.unit]
-                    [helins.fcss           :as fcss]
+  (:require #?(:clj [garden.units           :as css.unit])
+            [helins.fcss                    :as fcss]
             #?(:clj [helins.fcss.compiler])
-                    [helins.fcss.dev.css-2 :as fcss.dev.css-2]))
+            [helins.fcss.dev.css-2          :as fcss.dev.css-2]))
 
 
 ;;;;;;;;;;
@@ -88,11 +88,11 @@
    {:background [bg]
     :left       ["calc(1 * &)"
                  (fcss/fallback length
-                                "100%")]
+                                (css.unit/percent 100))]
     :top        (css.unit/percent 50)
     :width      [length]
     bg          fcss.dev.css-2/color
-    length      "50px"}])
+    length      "51px"}])
 
 
 
