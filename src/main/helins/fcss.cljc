@@ -15,12 +15,12 @@
    See README."
 
   (:require [clojure.string]
-            [garden.color]
-            [garden.compiler]
-            [garden.stylesheet]
-            [garden.util]
+            #?(:clj [garden.color])
+            #?(:clj [garden.compiler])
+            #?(:clj [garden.stylesheet])
+            #?(:clj [garden.util])
             #?(:clj [helins.coload        :as coload])
-                    [helins.medium        :as medium]
+            [helins.medium                :as medium]
             #?(:clj [helins.fcss.compiler :as fcss.compiler])
             #?(:clj [taoensso.timbre      :as log]))
   #?(:cljs (:require-macros [helins.fcss :refer [defclass
@@ -29,13 +29,15 @@
                                                  defname
                                                  defvar
                                                  inspect*
-                                                 namespaced-string*]]))
+                                                 interpolate*
+                                                 namespaced-string*
+                                                 templ*]]))
   #?(:clj (:import java.io.File
                    java.nio.file.Files)))
 
 
-(declare ^:private -prepare-rule+
-                   templ)
+#?(:clj (declare ^:private -prepare-rule+
+                           templ))
 
 
 ;;;;;;;;;;
@@ -54,13 +56,10 @@
            :link+     {}}))))
 
 
-;;;;;;;;;;
+;;;;;;;;;; CSS properties
 
 
-(medium/when-target* [:cljs/dev
-                      :clojure]
-
-  (def css-prop+
+#?(:clj (def css-prop+
 
     "A set of non-exhaustive CSS properties.
     
@@ -683,10 +682,7 @@
 ;;;;;;;;;; Templating - Private
 
 
-(medium/when-target* [:clojure
-                      :cljs/dev]
-
-  (defonce ^:no-doc -registry
+#?(:clj (defonce ^:no-doc -*registry
 
      ;; Map of `raw name` to -> `templated name`, such as:
      ;;
@@ -698,7 +694,7 @@
 
 
 
-(defn- -selector
+#?(:clj (defn- -selector
 
   ;; A CSS selector is commonly a string such as ".my-class > p".
   ;;
@@ -711,70 +707,63 @@
     (clojure.string/join ",\n"
                          (map templ
                               selector))
-    selector))
+    selector)))
 
 
 ;;;;;;;;;; Templating - Protocol, implementation, and API
 
 
-(medium/when-target* [:cljs/dev
-                      :clojure]
+#?(:clj (defprotocol ITemplate
 
+  "Defines [[-templ]] which is a low-level function used by [[templ]]."
 
-  (defprotocol ITemplate
+  (-templ [this]
 
-    "Defines [[-templ]] which is a low-level function used by [[templ]]."
+    "The [[templ]] function uses this, one should read about it carefully.
 
-    (-templ [this]
-
-      "The [[templ]] function uses this, one should read about it carefully.
-
-       The common user will probably never have to implement this protocol."))
+     The common user will probably never have to implement this protocol.")))
 
 
 
-  (extend-protocol ITemplate
+#?(:clj (extend-protocol ITemplate
 
-    garden.color.CSSColor
+  garden.color.CSSColor
 
-      (-templ [color]
-        (garden.compiler/render-css color))
-
-
-    garden.types.CSSUnit
-
-      (-templ [unit]
-        (garden.compiler/render-css unit))
+    (-templ [color]
+      (garden.compiler/render-css color))
 
 
-    #?(:clj  Number
-       :cljs number)
+  garden.types.CSSUnit
 
-      (-templ [n]
-        (str n))
-
-
-    #?(:clj  Object
-       :cljs object)
-
-      (-templ [o]
-        (str o))
+    (-templ [unit]
+      (garden.compiler/render-css unit))
 
 
-    #?(:clj  java.lang.String
-       :cljs string)
+  #?(:clj  Number
+     :cljs number)
 
-      (-templ [string]
-        (or (get @-registry
-                 string)
-            string))))
+    (-templ [n]
+      (str n))
 
 
+  #?(:clj  Object
+     :cljs object)
 
-(medium/when-target* [:cljs/dev
-                      :clojure]
+    (-templ [o]
+      (str o))
 
-  (defn templ
+
+  #?(:clj  java.lang.String
+     :cljs string)
+
+    (-templ [string]
+      (or (get @-*registry
+               string)
+          string))))
+
+
+
+#?(:clj (defn templ
 
     "Things defined using `def...` macros from this namespace usually have two representations.
    
@@ -852,6 +841,24 @@
                                              (-templ %3))
                     template-2
                     placeholder->templatable))))))
+
+
+
+#?(:clj (defmacro templ*
+
+  "Meant to be used at the REPL from Clojure/script during development.
+  
+   See [[templ]]."
+
+  ([templatable]
+
+   (templ (eval templatable)))
+
+
+  ([template placeholder->templatable]
+
+   (templ (eval template)
+          (eval placeholder->templatable)))))
 
 
 ;;;;;;;;;; Private - Templating CSS declarations in rule definitions (later)
@@ -1159,7 +1166,6 @@
     form-def)))
 
 
-
 ;;;;;;;;;; CSS definitions
 
 
@@ -1242,15 +1248,15 @@
           `(def ~(-assoc-docstring sym
                                    docstring)
                 ~(if (identical? target
-                                 :cljs/release)
-                   raw
+                                 :clojure)
                    `(let [raw# ~raw]
-                      (swap! -registry
+                      (swap! -*registry
                              assoc
                              raw#
                              ~(f-templated raw
                                            option+))
-                      raw#)))
+                      raw#)
+                   raw))
           rule+))))
 
 
@@ -1401,7 +1407,7 @@
 ;;;;;;;;;; CSS definitions - Animations
 
 
-(defn- -flatten-on-seq
+#?(:clj (defn- -flatten-on-seq
 
   ;; A flatten a collection for each element that passes `seq?`.
 
@@ -1421,11 +1427,11 @@
                (conj acc-2
                      x)))
            acc
-           coll)))
+           coll))))
 
 
 
-(defn ^:no-doc -anim
+#?(:clj (defn ^:no-doc -anim
 
   ""
 
@@ -1433,7 +1439,7 @@
 
   (apply garden.stylesheet/at-keyframes
          css-name
-         (-flatten-on-seq frame+)))
+         (-flatten-on-seq frame+))))
 
 
 
@@ -1462,8 +1468,6 @@
                                arg+
                                docstring
                                rest)))]))))))
-
-
 
 
 ;;;;;;;;;; TODO. Remove
@@ -1530,169 +1534,172 @@
                                               rule+))))))))))
 
 
-;;;;;;;;;; CSS Interpolation
+;;;;;;;;;; CSS Interpolation and working
 
 
-(medium/when-target* [:cljs/dev
-                      :clojure]
-
-  ;; Should not be useful besides for defining rules.
-  ;;
-  ;; Forbidding usage in CLJS release ensures that types are not implemented unnecessarily, which would
-  ;; also mean banning those Garden utilities from dead code elimination.
-
-
-
-  (defprotocol IInterpolate
+#?(:clj (defprotocol IInterpolate
   
-    "Defines only one function types can implement for doing CSS interpolation."
+  "Defines only one function types can implement for doing CSS interpolation."
+  
+  (interpolate [from to css-var]
+  
+    "CSS interpolation is about generating a string that leverages the CSS `calc` function for computing
+     a transition between two values, such as two Garden colors.
+   
+     That transition depends on a CSS variable (either a string or the result of [[defvar]]), which have
+     to be a value between 0 and 1 acting as a percentage.
+
+     For example, two numbers:
+
+     ```clojure
+     (= (interpolate 0
+                     255
+                     \"--my-css-var\")
+
+        \"calc(0 + ((255 - 0) * --my-css-var))\")
+     ```
+
+     More complex, two Garden colors:
+
+     ```clojure
+     (defvar some-percentage)
+
+     (interpolate (garden.color/rgb 100 123 125)
+                  (garden.color/hsl 278 0.2 0.3)
+                  some-percentage)
+     ```
+
+     Already implemented for:
+
+     - Numbers
+     - Strings of your choice, are not processed
+     - `garden.color.CSSColor`
+     - `garden.color.CSSUnit`
+     - Any object implementing [[ITemplate]]")))
+  
+  
+
+#?(:clj (defn- -default-interpolate
+  
+  ;; Interpolation scheme used by several types.
+  
+  [from to css-var]
+  
+  (templ "calc($from + (($to - $from) * $var))"
+         {:from from
+          :to   to
+          :var  css-var})))
+  
+
+  
+#?(:clj (extend-protocol IInterpolate
+  
+    
+  garden.color.CSSColor
   
     (interpolate [from to css-var]
-  
-      "CSS interpolation is about generating a string that leverages the CSS `calc` function for computing
-       a transition between two values, such as two Garden colors.
-     
-       That transition depends on a CSS variable (either a string or the result of [[defvar]]), which have
-       to be a value between 0 and 1 acting as a percentage.
-
-       For example, two numbers:
-
-       ```clojure
-       (= (interpolate 0
-                       255
-                       \"--my-css-var\")
-
-          \"calc(0 + ((255 - 0) * --my-css-var))\")
-       ```
-
-       More complex, two Garden colors:
-
-       ```clojure
-       (defvar some-percentage)
-
-       (interpolate (garden.color/rgb 100 123 125)
-                    (garden.color/hsl 278 0.2 0.3)
-                    some-percentage)
-       ```
-
-       Already implemented for:
-
-       - Numbers
-       - Strings of your choice, are not processed
-       - `garden.color.CSSColor`
-       - `garden.color.CSSUnit`
-       - Any object implementing [[ITemplate]]"))
+      (when-not (instance? garden.color.CSSColor
+                           to)
+        (throw (ex-info "Cannot interpolate color to non-color"
+                        {:from from
+                         :to   to})))
+      (let [alpha-1   (:alpha from)
+            alpha-2   (:alpha to)
+            rgb-1     (garden.color/as-rgb from)
+            rgb-2     (garden.color/as-rgb to)
+            calc+     (templ "calc($r-1 + ($r-2 - $r-1) * $var), calc($g-1 + ($g-2 - $g-1) * $var), calc($b-1 + ($b-2 - $b-1) * $var)"
+                             {:b-1 (rgb-1 :blue)
+                              :b-2 (rgb-2 :blue)
+                              :r-1 (rgb-1 :red)
+                              :r-2 (rgb-2 :red)
+                              :g-1 (rgb-1 :green)
+                              :g-2 (rgb-2 :green)
+                              :var css-var})]
+        (if (or alpha-1
+                alpha-2)
+          (templ "rgba( $calc+, calc($a-1 + ($a-2 - $a-1) * $var))"
+                 {:a-1   (or alpha-1
+                             1)
+                  :a-2   (or alpha-2
+                             1)
+                  :calc+ calc+
+                  :var   css-var})
+          (str "rgb( " calc+ ")"))))
   
   
-
-  (defn- -default-interpolate
+  garden.types.CSSUnit
   
-    ;; Interpolation scheme used by several types.
-  
-    [from to css-var]
-  
-    (templ "calc($from + (($to - $from) * $var))"
-           {:from from
-            :to   to
-            :var  css-var}))
-  
-
-  
-  (extend-protocol IInterpolate
-  
-    
-    garden.color.CSSColor
-  
-      (interpolate [from to css-var]
-        (when-not (instance? garden.color.CSSColor
-                             to)
-          (throw (ex-info "Cannot interpolate color to non-color"
-                          {:from from
-                           :to   to})))
-        (let [alpha-1   (:alpha from)
-              alpha-2   (:alpha to)
-              rgb-1     (garden.color/as-rgb from)
-              rgb-2     (garden.color/as-rgb to)
-              calc+     (templ "calc($r-1 + ($r-2 - $r-1) * $var), calc($g-1 + ($g-2 - $g-1) * $var), calc($b-1 + ($b-2 - $b-1) * $var)"
-                               {:b-1 (rgb-1 :blue)
-                                :b-2 (rgb-2 :blue)
-                                :r-1 (rgb-1 :red)
-                                :r-2 (rgb-2 :red)
-                                :g-1 (rgb-1 :green)
-                                :g-2 (rgb-2 :green)
-                                :var css-var})]
-          (if (or alpha-1
-                  alpha-2)
-            (templ "rgba( $calc+, calc($a-1 + ($a-2 - $a-1) * $var))"
-                   {:a-1   (or alpha-1
-                               1)
-                    :a-2   (or alpha-2
-                               1)
-                    :calc+ calc+
-                    :var   css-var})
-            (str "rgb( " calc+ ")"))))
-  
-  
-    garden.types.CSSUnit
-  
-      (interpolate [from to css-var]
-        (when-not (instance? garden.types.CSSUnit
-                             to)
-          (throw (ex-info "Cannot interpolate unit to non-unit"
-                          {:from from
-                           :to   to})))
-        (-default-interpolate from
-                              to
-                              css-var))
+    (interpolate [from to css-var]
+      (when-not (instance? garden.types.CSSUnit
+                           to)
+        (throw (ex-info "Cannot interpolate unit to non-unit"
+                        {:from from
+                         :to   to})))
+      (-default-interpolate from
+                            to
+                            css-var))
 
 
-    #?@(:cljs
-         
-         [number
+  #?@(:cljs
+       
+       [number
   
-            (interpolate [from to css-var]
-              (-default-interpolate from
-                                    to
-                                    css-var))])
+          (interpolate [from to css-var]
+            (-default-interpolate from
+                                  to
+                                  css-var))])
   
 
-    #?(:clj  Object
-       :cljs object)
+  #?(:clj  Object
+     :cljs object)
   
-      (interpolate [from to css-var]
-        (-default-interpolate from
-                              to
-                              css-var))
+    (interpolate [from to css-var]
+      (-default-interpolate from
+                            to
+                            css-var))
   
-    #?@(:cljs
-         
-         [string
+  #?@(:cljs
+       
+       [string
   
-            (interpolate [from to css-var]
-              (-default-interpolate from
-                                    to
-                                    css-var))]))
+          (interpolate [from to css-var]
+            (-default-interpolate from
+                                  to
+                                  css-var))])))
 
 
 
-  (defn fallback
+#?(:clj (defmacro interpolate*
 
-    "Generates a string providing a fallback value for a var (which is  either a string
-     or the result of [[defvar]]).
-    
-     ```clojure
-     (defvar foo)
+  ""
 
-     (= (fallback \"--foo\"
-                  42)
-        \"var(--foo, 42)\")
-     ```"
+  [from to css-var]
 
-    [css-var fallback-value]
+  (eval `(interpolate ~from
+                      ~to
+                      ~css-var))))
 
-    (templ "var($var, $fallback)"
-           {:fallback fallback-value
-            :var      (str css-var)})))
+;;;;;;;;;; Working with CSS variables
+
+
+#?(:clj (defn fallback
+
+  "Generates a string providing a fallback value for a var (which is  either a string
+   or the result of [[defvar]]).
+  
+   ```clojure
+   (defvar foo)
+
+   (= (fallback \"--foo\"
+                42)
+      \"var(--foo, 42)\")
+   ```"
+
+  [css-var fallback-value]
+
+  (templ "var($var, $fallback)"
+         {:fallback fallback-value
+          :var      (str css-var)})))
 
 
 ;;;;;;;;;; Plugin for Medium hook - Private
@@ -1770,7 +1777,7 @@
 
 #?(:clj (defn coload
 
-  "Plugin for Medium Hook.
+  "Plugin for Coload hook.
   
    See README."
 
@@ -1808,9 +1815,7 @@
 ;;;;;;;;;; Deleting ununsed <link> nodes during dev
 
 
-#?(:cljs (medium/when-target* [:cljs/dev]
-
-  (defn ^:dev/after-load ^:no-doc -after-load
+#?(:cljs (defn ^:dev/after-load ^:no-doc -after-load
 
     ;; Lifecycle hook for Shadow-CLJS which deletes <link> nodes referencing removed CSS files.
     ;;
@@ -1831,4 +1836,4 @@
                                              def-cycle
                                              (fn [_nspace _sym css-id]
                                                (some-> (js/document.getElementById css-id)
-                                                       .remove))))))))))
+                                                       .remove)))))))))
