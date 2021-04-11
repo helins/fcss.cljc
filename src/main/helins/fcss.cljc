@@ -682,7 +682,7 @@
 ;;;;;;;;;; Templating - Private
 
 
-#?(:clj (defonce ^:no-doc -*registry
+#?(:clj (defonce ^:no-doc -*dual-name+
 
      ;; Map of `raw name` to -> `templated name`, such as:
      ;;
@@ -757,7 +757,7 @@
      :cljs string)
 
     (-templ [string]
-      (or (get @-*registry
+      (or (get @-*dual-name+
                string)
           string))))
 
@@ -883,7 +883,7 @@
   ;; Also inspects CSS properties and warns about a possible typo when they are
   ;; unknown.
 
-  [var-rul decl+]
+  [var-def decl+]
 
   (reduce-kv (fn [decl-2+ property value]
                (assoc decl-2+
@@ -892,10 +892,10 @@
                           (when-not (contains? css-prop+
                                                property)
                             (let [{:keys [file
-                                          line]} (meta var-rul)]
+                                          line]} (meta var-def)]
                               (log/warn (format "Maybe typo in CSS property '%s' for rule '%s' (%s, line %d)" 
                                                 property
-                                                (symbol var-rul)
+                                                (symbol var-def)
                                                 file
                                                 line))))
                             property)
@@ -923,7 +923,7 @@
   ;;
   ;; Used by [[-prepare-at-rule]].
 
-  [var-rul at-rule]
+  [var-def at-rule]
 
   (update-in at-rule
              [:value
@@ -931,7 +931,7 @@
              (fn [frame+]
                (mapv (fn [[step decl+]]
                        [step
-                        (-templ-decl+ var-rul
+                        (-templ-decl+ var-def
                                       decl+)])
                      frame+)))))
 
@@ -943,7 +943,7 @@
   ;;
   ;; Used by [[-prepare-at-rule]].
 
-  [var-rul at-rule]
+  [var-def at-rule]
 
   ;; For some reason, Garden needs rules to remain in a list (specifically).
   ;; A vector will result in the declarations not being rendered.
@@ -952,7 +952,7 @@
              [:value
               :rules]
              (fn [rule+]
-               (list* (-prepare-rule+ var-rul
+               (list* (-prepare-rule+ var-def
                                       rule+))))))
 
 
@@ -965,15 +965,15 @@
   ;;
   ;; Used by [[-prepare-rule+]].
 
-  [var-rul {:as   at-rule
+  [var-def {:as   at-rule
             :keys [identifier]}]
 
   (case identifier
-    :keyframes (-prepare-anim var-rul
+    :keyframes (-prepare-anim var-def
                               at-rule)
-    :media     (-prepare-at-generic var-rul
+    :media     (-prepare-at-generic var-def
                                     at-rule)
-    :feature   (-prepare-at-generic var-rul
+    :feature   (-prepare-at-generic var-def
                                     at-rule)
     :else      at-rule)))
 
@@ -988,20 +988,20 @@
   ;;
   ;; Used by [[-prepare-rule+]].
 
-  [var-rul rule]
+  [var-def rule]
 
   (case (count rule)
     2 (let [[templatable
              decl+]      rule]
         [(templ templatable)
-         (-templ-decl+ var-rul
+         (-templ-decl+ var-def
                        decl+)])
     3 (let [[template
              placeholder->templatable
              decl+]                   rule]
         [(templ template
                 placeholder->templatable)
-         (-templ-decl+ var-rul
+         (-templ-decl+ var-def
                        decl+)]))))
 
 
@@ -1015,31 +1015,31 @@
   ;; rules to the global registry.
 
 
-  ([var-rul rule+]
+  ([var-def rule+]
 
-   (-prepare-rule+ var-rul
+   (-prepare-rule+ var-def
                    rule+
                    []))
 
 
-  ([var-rul rule+ acc]
+  ([var-def rule+ acc]
 
    (reduce (fn [acc-2 rul]
              (if (seq? rul)
-               (-prepare-rule+ var-rul
+               (-prepare-rule+ var-def
                                rul
                                acc-2)
                (conj acc-2
                      (cond
-                       (vector? rul)              (-prepare-vector-rule var-rul
+                       (vector? rul)              (-prepare-vector-rule var-def
                                                                         rul)
-                       (garden.util/at-rule? rul) (-prepare-at-rule var-rul
+                       (garden.util/at-rule? rul) (-prepare-at-rule var-def
                                                                     rul)
                        :else                      (throw (ex-info "CSS rule format not supported"
                                                                   {:fcss.error/namespace (ns-name *ns*)
                                                                    :fcss.error/rule      rul
                                                                    :fcss.error/type      :rule-format
-                                                                   :fcss.error/var       var-rul}))))))
+                                                                   :fcss.error/var       var-def}))))))
            acc
            rule+))))
 
@@ -1101,15 +1101,15 @@
   ;; and only does an update if this is true.
   ;; This prevents unnecessary CSS recompilation and subsequent IO.
 
-  [var-rul rule-new+]
+  [var-def rule-new+]
 
   (swap! fcss.compiler/*rule+
-         (let [docstring   (-> var-rul
+         (let [docstring   (-> var-def
                                meta
                                :doc)
-               rule-new-2+ (-prepare-rule+ var-rul
+               rule-new-2+ (-prepare-rule+ var-def
                                            rule-new+)
-               sym         (symbol var-rul)
+               sym         (symbol var-def)
                nspace      (symbol (namespace sym))
                nme         (symbol (name sym))]
            (if fcss.compiler/dev?
@@ -1143,7 +1143,7 @@
 
 
 
-#?(:clj (defn- -rul
+#?(:clj (defn- -defrul
 
   ;; Entrypoint for defining rules.
   ;; Notably used by [[-defdualname]].
@@ -1196,16 +1196,16 @@
     (when-not (identical? target
                           :cljs/release)
       (let [docstring (-docstring arg+)]
-        (-rul sym
-              target
-              `(def ~(-assoc-docstring sym
-                                       docstring)
-                    (quote ~(symbol (str *ns*)
-                                    (name sym))))
-              (cond->
-                arg+
-                docstring
-                rest)))))))
+        (-defrul sym
+                 target
+                 `(def ~(-assoc-docstring sym
+                                          docstring)
+                       (quote ~(symbol (str *ns*)
+                                       (name sym))))
+                 (cond->
+                   arg+
+                   docstring
+                   rest)))))))
 
 
 
@@ -1243,21 +1243,21 @@
 
         raw       (f-raw (namespaced-string sym))
         target    (medium/target env)]
-    (-rul sym
-          target
-          `(def ~(-assoc-docstring sym
-                                   docstring)
-                ~(if (identical? target
-                                 :clojure)
-                   `(let [raw# ~raw]
-                      (swap! -*registry
-                             assoc
-                             raw#
-                             ~(f-templated raw
-                                           option+))
-                      raw#)
-                   raw))
-          rule+))))
+    (-defrul sym
+             target
+             `(def ~(-assoc-docstring sym
+                                      docstring)
+                   ~(if (identical? target
+                                    :clojure)
+                      `(let [raw# ~raw]
+                         (swap! -*dual-name+
+                                assoc
+                                raw#
+                                ~(f-templated raw
+                                              option+))
+                         raw#)
+                      raw))
+             rule+))))
 
 
 
@@ -1316,17 +1316,17 @@
   [sym & arg+]
 
   (let [docstring (-docstring arg+)]
-    (-rul sym
-          (medium/target &env)
-          `(def ~(-assoc-docstring sym
-                                   docstring)
+    (-defrul sym
+             (medium/target &env)
+             `(def ~(-assoc-docstring sym
+                                      docstring)
 
-             ~(str "data-"
-                   (namespaced-string sym)))
-          (cond->
-            arg+
-            docstring
-            rest)))))
+                ~(str "data-"
+                      (namespaced-string sym)))
+             (cond->
+               arg+
+               docstring
+               rest)))))
 
 
 
@@ -1458,16 +1458,16 @@
                           :cljs/release)
       (let [css-name  (namespaced-string sym)
             docstring (-docstring arg+)]
-        (-rul sym
-              (medium/target &env)
-              `(def ~(-assoc-docstring sym
-                                       docstring)
-                    ~css-name)
-              `[(-anim ~css-name
-                       ~(vec (cond->
-                               arg+
-                               docstring
-                               rest)))]))))))
+        (-defrul sym
+                 (medium/target &env)
+                 `(def ~(-assoc-docstring sym
+                                          docstring)
+                       ~css-name)
+                 `[(-anim ~css-name
+                          ~(vec (cond->
+                                  arg+
+                                  docstring
+                                  rest)))]))))))
 
 
 ;;;;;;;;;;
@@ -1500,9 +1500,9 @@
 
    (medium/not-cljs-release*)
    (let [rule+   @fcss.compiler/*rule+
-         var-rul (resolve sym)]
-     (if var-rul
-       (let [sym-resolved (symbol var-rul)]
+         var-def (resolve sym)]
+     (if var-def
+       (let [sym-resolved (symbol var-def)]
          `(quote ~(get-in rule+
                           [(symbol (namespace sym-resolved))
                            (symbol (name sym-resolved))])))
@@ -1770,7 +1770,6 @@
   (let [f (case stage
             :compile-finish -compile-finish)]
     (f param+))
-
   ;;
   ;; Deleting namespaces that are unloaded and never reloaded (ie. deleted).
   ;;

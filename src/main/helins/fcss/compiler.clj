@@ -56,19 +56,6 @@
   (atom {}))
 
 
-(defn add-rule!
-
-  ""
-
-  [unqualified-sym rule+]
-
-  (swap! *rule+
-         assoc-in
-         [(ns-name *ns*)
-          unqualified-sym]
-         rule+))
-
-
 ;;;;;;;;;; Tagging strings and working with them
 
 
@@ -181,7 +168,6 @@
                       meta
                       :fcss/compile-cycle)
                   (coload/compile-cycle))
-           (println :NEW-FILE unqualified-sym)
            (try
              (.mkdirs (File. path-dir))
              (catch Throwable e
