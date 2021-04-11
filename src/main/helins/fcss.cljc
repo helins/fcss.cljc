@@ -1470,26 +1470,6 @@
                                rest)))]))))))
 
 
-;;;;;;;;;; TODO. Remove
-
-
-#?(:clj (defn rule
-
-    ;; Obsolete but used by tests.
-
-    ([templatable style]
-
-     [(templ templatable)
-      style])
-
-
-    ([template placeholder->templatable style]
-
-      [(templ template
-              placeholder->templatable)
-      style])))
-
-
 ;;;;;;;;;;
 
 

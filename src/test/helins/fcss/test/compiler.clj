@@ -75,13 +75,31 @@
 
 
 
+(defn rule
+
+  ;;
+
+  ([templatable style]
+
+   [(fcss/templ templatable)
+    style])
+
+
+  ([template placeholder->templatable style]
+
+    [(fcss/templ template
+                 placeholder->templatable)
+    style]))
+
+
+
 (def rule-complex
 
   ""
 
-  (fcss/rule "$$:hover"
-             {:$ cl-0}
-             {:background 'red}))
+  (rule "$$:hover"
+        {:$ cl-0}
+        {:background 'red}))
 
 
 
@@ -89,10 +107,10 @@
 
   ""
 
-  (fcss/rule "$0:active $1"
-             {0 cl-0
-              1 cl-1}
-             {:background 'green}))
+  (rule "$0:active $1"
+        {0 cl-0
+         1 cl-1}
+        {:background 'green}))
 
 
 
@@ -100,7 +118,7 @@
 
   ""
 
-  (fcss/rule ".untouched"
+  (rule ".untouched"
              {:color 'red}))
 
 
@@ -110,18 +128,18 @@
   ""
 
   (fcss.compiler/atomize-rule+ {:detected-name+ detected-name+
-                                :rule+          [(fcss/rule cl-0
-                                                            {:background 'black
-                                                             :color      'black
-                                                             :margin     0})
-                                               (fcss/rule cl-1
-                                                            {:background 'black
-                                                             :color      'white})
-                                               (fcss/rule cl-2
-                                                            {:background 'black})
-                                               rule-complex
-                                               rule-complex-nested
-                                               rule-untouched]}))
+                                :rule+          [(rule cl-0
+                                                       {:background 'black
+                                                        :color      'black
+                                                        :margin     0})
+                                                 (rule cl-1
+                                                       {:background 'black
+                                                        :color      'white})
+                                                 (rule cl-2
+                                                       {:background 'black})
+                                                 rule-complex
+                                                 rule-complex-nested
+                                                 rule-untouched]}))
 
 
 
