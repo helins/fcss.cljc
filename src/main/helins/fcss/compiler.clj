@@ -22,7 +22,9 @@
 
 (def dev?
 
-  ""
+  "Is the environment set to dev mode?
+  
+   Attention, becomes altered to true when in release mode."
 
   true)
 
@@ -30,7 +32,7 @@
 
 (def ^String dev-root
 
-  ""
+  "Path were dev CSS files are produced."
 
   "fcss/dev/fcss")
 
@@ -40,7 +42,9 @@
 
 (defn css-var?
 
-  ""
+  "Is this a CSS variable?
+  
+   Returns true if string starts with \"--\"."
 
   [string]
 
@@ -53,6 +57,8 @@
 
 (defonce *rule+
 
+  ;; Global rule registry.
+
   (atom {}))
 
 
@@ -61,7 +67,7 @@
 
 (def tag-begin
 
-  ""
+  "A tagged CSS item, such as a class, begins with this string."
 
   "<<<_FCSS_")
 
@@ -69,7 +75,7 @@
 
 (def tag-end
 
-  ""
+  "A tagged CSS item, such as a class, ends with this string."
 
   "_FCSS_>>>")
 
@@ -83,7 +89,7 @@
 
   (def regex-tagged
 
-    ""
+    "Regex for a tagged CSS item (class or var)."
 
     (re-pattern (str "(?:--)?"
                      base-pattern)))
@@ -91,14 +97,14 @@
 
   (def regex-tagged-class
 
-	""
+	"Regex for a tagged CSS class."
 
 	(re-pattern base-pattern))
 
 
   (def regex-tagged-var
 
-    ""
+    "Regex for a tagged CSS var."
 
     (re-pattern (str "--"
                      base-pattern)))
@@ -106,7 +112,7 @@
 
   (def regex-tagged-dotted-class
 
-    ""
+    "Regex for a tagged CSS class in CSS notation (beginning with a dot)."
 	
     (re-pattern (str "\\."
 					 base-pattern))))
@@ -115,22 +121,24 @@
 
 (defn detect-tag+
 
-  ""
+  "Given a string, detects tagged classes and variables.
+  
+   Returns a map containing `:class+` and `:var+`, pointing to sets containing those
+   names."
 
   [string]
 
-  (reduce (fn [acc magic-name]
+  (reduce (fn [acc tagged]
             (update acc
-                    (if (css-var? magic-name)
+                    (if (css-var? tagged)
                       :var+
                       :class+)
                     conj
-                    magic-name))
+                    tagged))
           {:class+ #{}
            :var+   #{}}
           (re-seq regex-tagged
                   string)))
-
 
 
 ;;;;;;;;;; Compiling CSS for dev
@@ -202,7 +210,7 @@
 
 (defn add-rule
 
-  ""
+  "Adds a CSS `rule` to the given `ctx`."
 
   [ctx rule]
 
@@ -215,58 +223,74 @@
 
 (defn atomize-rule+
 
-  ""
+  "Atomizing a rule means, for a CSS class, splitting that rule into individual declarations and adding
+   all that to a map of `single declaration` -> `set of CSS classes`.
 
-  ;; TODO. Provide genuine support for vector selectors.
+   Atomization happens only for CSS selectors consisting of only a tagged CSS class and nothing else.
+
+   Tagged classes that are not found in `detected-name+` are simply eliminated, resulting in dead CSS
+   elimination.
+
+   This function updates the given context with those keys:
+
+   | Key | Is |
+   |---|---|
+   | :decl->class+ | A map of `single declaration` -> `set of CSS classes` |
+   | :rule+ | Existing vector is emptied and then filled with rules not targetting CSS classes |
+   | :rule-complex+ | Vector of rules with complex selectors where at least one CSS class is both tagged and detected |"
+
+  ;; TODO. Keep multiple selectors as a vector when prepareing rules in core namespace?
 
   [{:as   ctx
     :keys [detected-name+
            rule+]}]
 
   (reduce (fn [ctx rule]
-            (if (vector? rule)
-              (let [[str-selector+
-                     decl+ ]       rule
+            (cond
+              (vector? rule) (let [[str-selector+
+                                    decl+ ]       rule]
+                               ;;
+                               ;; Selector with consisting of one tagged class.
+                               ;;
+                               (if-some [dotted-class-name (re-matches regex-tagged-dotted-class
+                                                                       str-selector+)]
+                                 (let [class-name (.substring ^String dotted-class-name
+                                                              1)]
+                                   (if (contains? detected-name+
+                                                  class-name)
+                                     (update ctx
+                                             :decl->class+
+                                             (fn [decl->class+]
+                                               (reduce #(update %1
+                                                                %2
+                                                                (fnil conj
+                                                                      #{})
+                                                                class-name)
+                                                       decl->class+
+                                                       decl+)))
+                                     ctx))
+                                 ;;
+                                 ;; Checking for a complex selector (containing at least one tagged and detected CSS class)
+                                 ;; 
+                                 ;;
+                                 (if-some [class-name+ (not-empty (into #{}
+                                                                        (re-seq regex-tagged-class
+                                                                                str-selector+)))]
+                                   (if (= (count (filter detected-name+
+                                                         class-name+))
+                                          (count class-name+))
 
-                    str-selector+  (cond->>
-                                     str-selector+
-                                     (vector? str-selector+)
-                                     (clojure.string/join ","))]
-                (if-some [dotted-class-name (re-matches regex-tagged-dotted-class
-                                                        str-selector+)]
-                  (let [class-name (.substring ^String dotted-class-name
-                                               1)]
-                    (if (contains? detected-name+
-                                   class-name)
-                      (update ctx
-                              :decl->class+
-                              (fn [decl->class+]
-                                (reduce #(update %1
-                                                 %2
-                                                 (fnil conj
-                                                       #{})
-                                                 class-name)
-                                        decl->class+
-                                        decl+)))
-                      ctx))
-                  (if-some [class-name+ (not-empty (into #{}
-                                                         (re-seq regex-tagged-class
-                                                                 str-selector+)))]
-                    (if (= (count (filter detected-name+
-                                          class-name+))
-                           (count class-name+))
-
-                      (update ctx
-                              :rule-complex+
-                              conj
-                              {:class-name+ class-name+
-                               :decl+       decl+
-                               :selector    str-selector+})
-                      ctx)
-                    (add-rule ctx
-                              rule))))
-              (add-rule ctx
-                        rule)))
+                                     (update ctx
+                                             :rule-complex+
+                                             conj
+                                             {:class-name+ class-name+
+                                              :decl+       decl+
+                                              :selector    str-selector+})
+                                     ctx)
+                                   (add-rule ctx
+                                             rule))))
+              :else          (add-rule ctx
+                                       rule)))
           (assoc ctx
                  :decl->class+  {}
                  :rule+         []
@@ -277,7 +301,12 @@
 
 (defn group-decl+
 
-  ""
+  "Must be called after [[atomize-rule+]].
+  
+   Inverses `decl->class+` by assoc'ing to the given `ctx`, at `:class+->style`,
+   a map of `set of CSS classes` -> `CSS style` (regrouped declarations).
+
+   This computes groups of classes that shares exactly or partly the same style."
 
   [{:as   ctx
     :keys [decl->class+]}]
@@ -295,9 +324,17 @@
 
 
 
-(defn rename-class+
+(defn munge-class+
 
-  ""
+  "Must be called after [[group-decl+]].
+
+   Updates the `ctx` with:
+
+   | Key | Is |
+   |---|---|
+   | :class->unique-munged | Map of `CSS class` -> `munged named referring only to that class` |
+   | :original->munged+ | Map of `CSS class` -> `vector of munged names` |
+   | :seed | Number used for munging that is being incremented as names are produced |"
 
   [{:as        ctx
     :keys      [class+->style]
@@ -366,7 +403,11 @@
 
 (defn ensure-unique
 
-  ""
+  "Ensures that each CSS class has a munged named referring only to that class.
+  
+   See [[munge-class+]].
+  
+   Used by [[ensure-unique]]."
 
   [ctx class-name]
 
@@ -391,9 +432,14 @@
 
 
 
-(defn process-complex
+(defn rule-complex+
 
-  ""
+  "Must be called after [[munge-class+]].
+
+   Processes complex CSS rules (described in [[atomize-rule+]]) and adds them
+   to the `ctx` under `:rule+`.
+  
+   The `:rule-complex+` key is dissoc'ed."
 
   [{:as   ctx
     :keys [rule-complex+]}]
@@ -401,9 +447,9 @@
   (reduce (fn [ctx-2 {:keys [class-name+
                              decl+
                              selector]}]
-            (let [ctx-3 (reduce ensure-unique
-                                ctx-2
-                                class-name+)
+            (let [ctx-3      (reduce ensure-unique
+                                     ctx-2
+                                     class-name+)
                   selector-2 (reduce (fn [selector-2 [class-name munged]]
                                        (clojure.string/replace selector-2
                                                                class-name
@@ -411,8 +457,7 @@
                                      selector
                                      (map (juxt identity
                                                 (ctx-3 :class->unique-munged))
-                                          class-name+))
-                  ]
+                                          class-name+))]
               (update ctx-3
                       :rule+
                       conj
@@ -424,21 +469,42 @@
 
 
 
+(defn class-join-munged
+
+  "Must be called after [[rule-complex+]].
+
+   In `ctx`, under `:class->munged`, assoc'es a map of `CSS class` -> `string
+   gathering all related munged names`."
+
+  [{:as   ctx
+    :keys [original->munged+]}]
+
+  (assoc ctx
+         :class->munged
+         (into {}
+               (for [[class-name munged+] original->munged+]
+                 [class-name
+                  (clojure.string/join " "
+                                       munged+)]))))
+
+
+
 (defn munge-var+
 
-  ""
+  "Akin to [[munge-class+]], munges the given CSS vars and assoc'es them
+   in the `ctx` under `:var->munged`."
 
   [ctx var+]
 
   (let [{:fcss/keys [prefix]} ctx]
-    (reduce (fn [ctx-2 magic-var]
+    (reduce (fn [ctx-2 tagged-var]
               (let [seed-2 (inc (ctx-2 :seed))]
                 (-> ctx-2
                     (assoc :seed
                            seed-2)
                     (update :var->munged
                             assoc
-                            magic-var
+                            tagged-var
                             (str "--"
                                  prefix
                                  seed-2)))))
@@ -449,7 +515,10 @@
 
 (defn compile-rule+
 
-  ""
+  "Must be called after [[class-join-munged]].
+  
+   After all that work, compiles all surviving rules to CSS and assoc'es them
+   in `ctx` undex `:output`."
 
   [{:as   ctx
     :keys [rule+]}]
@@ -462,9 +531,11 @@
 
 (defn rename-in-output
 
-  ""
+  "Must be called after [[compile-rule+]], when surviving rules have been compiled to CSS.
+  
+   Previously detected CSS classes and vars are substituted for their munged names in `:output`."
 
-  ;; TODO. Warn that a declaration refers to something that is not used in code (eg. css var not defined in advanced build).
+  ;; TODO. Warn when a declaration refers to something that is not used in code (eg. CSS var not defined in advanced build).
 
   [{:as        ctx
     :keys      [output
@@ -502,11 +573,17 @@
            :output
            output-2)))
 
+;;;;;;;;;; IO
 
 
 (defn open-file+
 
-  ""
+  "Opens file paths.
+  
+   Returns a map containing of `path` to `map` containing:
+
+   - `:content` -> string representing file content
+   - Everything returned by [[detect-tag+]] after running it on the content"
 
   [path+]
 
@@ -520,27 +597,12 @@
 
 
 
-
-(defn join-munged
-
-  ""
-
-  [{:as   ctx
-    :keys [original->munged+]}]
-
-  (assoc ctx
-         :class->munged
-         (into {}
-               (for [[class-name munged+] original->munged+]
-                 [class-name
-                  (clojure.string/join " "
-                                       munged+)]))))
-
-
-
 (defn write-file+
 
-  ""
+  "In files previously opened with [[open-file+]], substitutes CSS classes and vars for their
+   munged names.
+  
+   Used by [[process!]]."
 
   ;; TODO. Warn about used names which does not have any rules.
 
@@ -563,7 +625,9 @@
 
 (defn file!
 
-  ""
+  "Makes a File object out of a string `path` and ensures its parent directory exist.
+  
+   Needed prior to writing such a file."
 
   ^File
 
@@ -575,11 +639,14 @@
     file))
 
 
+;;;;;;;;;; Centralizing previous optimizing steps
 
 
 (defn process!
 
-  ""
+  "Processes through all the various optimizing steps described in this namespace.
+
+   Used by [[main]]."
 
   [{:as             ctx
     :fcss.path/keys [cljs+
@@ -591,15 +658,15 @@
                 rule+]}           (-> (atomize-rule+ (assoc ctx
                                                             :detected-name+
                                                             (into #{}
-                                                                  (mapcat :class+
-                                                                          (vals opened-file+)))))
+                                                                  (mapcat :class+)
+                                                                  (vals opened-file+))))
                                       group-decl+
-                                      rename-class+
-                                      process-complex
-                                      join-munged
+                                      munge-class+
+                                      rule-complex+
+                                      class-join-munged
                                       (munge-var+ (into #{}
-                                                        (mapcat :var+
-                                                                (vals opened-file+))))
+                                                        (mapcat :var+)
+                                                        (vals opened-file+)))
                                       compile-rule+
                                       rename-in-output)]
     (when report
@@ -615,7 +682,7 @@
 
 (def main-default
 
-  ""
+  "Default arguments for [[main]]"
 
   {:fcss/operation   :release
    :fcss/prefix      "_-_"
@@ -627,7 +694,9 @@
 
 (defn main
 
-  ""
+  "Entry point to optimizing compiler.
+  
+   Attention, alters the var root [[dev?]] to false."
 
   [arg+]
 

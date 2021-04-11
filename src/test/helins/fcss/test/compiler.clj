@@ -198,19 +198,19 @@
 
 
 
-(def ctx-rename-class+
+(def ctx-munge-class+
 
   ""
 
-  (fcss.compiler/rename-class+ ctx-group-decl+))
+  (fcss.compiler/munge-class+ ctx-group-decl+))
 
 
 
-(t/deftest rename-class+
+(t/deftest munge-class+
 
   (let [{:keys [original->munged+
                 rule+
-                seed]}             ctx-rename-class+]
+                seed]}             ctx-munge-class+]
     (t/is (= 3
              seed)
           "3 munged classes are created")
@@ -231,21 +231,21 @@
 
 
 
-(def ctx-process-complex
+(def ctx-rule-complex+
 
   ""
 
-  (fcss.compiler/process-complex ctx-rename-class+))
+  (fcss.compiler/rule-complex+ ctx-munge-class+))
 
 
 
-(t/deftest process-complex
+(t/deftest rule-complex+
 
-  (t/is (empty? (ctx-process-complex :rule-complex+))
+  (t/is (empty? (ctx-rule-complex+ :rule-complex+))
         "No more pending complex rules")
-  (t/is (= (+ (count (ctx-rename-class+ :rule+))
-              (count (ctx-rename-class+ :rule-complex+)))
-           (count (ctx-process-complex :rule+)))
+  (t/is (= (+ (count (ctx-munge-class+ :rule+))
+              (count (ctx-munge-class+ :rule-complex+)))
+           (count (ctx-rule-complex+ :rule+)))
         "Complex rule is now ready"))
 
 
