@@ -18,7 +18,7 @@
  
  :dev-http
  {8000 ["fcss/dev"
-        "resources/public"]}
+        "cljs"]}
  
  :nrepl
  {:port 14563}}

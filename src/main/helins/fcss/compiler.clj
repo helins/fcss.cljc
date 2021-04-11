@@ -181,6 +181,7 @@
                       meta
                       :fcss/compile-cycle)
                   (coload/compile-cycle))
+           (println :NEW-FILE unqualified-sym)
            (try
              (.mkdirs (File. path-dir))
              (catch Throwable e

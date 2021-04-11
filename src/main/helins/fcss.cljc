@@ -683,7 +683,8 @@
 ;;;;;;;;;; Templating - Private
 
 
-(medium/when-target* [:cljs/dev]
+(medium/when-target* [:clojure
+                      :cljs/dev]
 
   (defonce ^:no-doc -registry
 
@@ -692,8 +693,8 @@
      ;;   {"my-class" ".my-class"}
      ;;
      ;; See [[templ]].
-   
-     (js/Map.)))
+
+     (atom {})))
 
 
 
@@ -764,26 +765,9 @@
        :cljs string)
 
       (-templ [string]
-        #?(:clj  string
-           :cljs (or (.get -registry
-                           string)
-                     string))))
-
-
-
-  (defrecord DualName [raw
-                       templated]
-
-    ITemplate
-
-      (-templ [_]
-        templated)
-
-
-    Object
-
-      (toString [_]
-        raw)))
+        (or (get @-registry
+                 string)
+            string))))
 
 
 
@@ -865,7 +849,7 @@
                                                :else         (throw (ex-info "Placeholder must be keyword or number"
                                                                              {:placeholder %2
                                                                               :template    template})))
-                                             (templ %3))
+                                             (-templ %3))
                     template-2
                     placeholder->templatable))))))
 
@@ -909,11 +893,10 @@
                                                 line))))
                             property)
                         (str property))
-                      (cond->
+                      (cond->>
                         value
-                        (instance? DualName
-                                   value)
-                        templ)))
+                        (vector? value)
+                        (apply templ))))
               (if fcss.compiler/dev?
                 (sorted-map-by (fn [k-1 k-2]
                                  (compare (-str-property k-1)
@@ -1067,10 +1050,6 @@
 
     [sym-ns sym-var]
 
-
-
-
-
     #?(:node nil
        :cljs (let [css-id (str "fcss_dev__"
                                sym-ns
@@ -1148,7 +1127,8 @@
                    (assoc-in [nspace
                               nme]
                              (with-meta rule-new-2+
-                                        {:fcss/compile-cycle (coload/compile-cycle)
+                                        {:fcss/compile-cycle (or (coload/compile-cycle)
+                                                                 0)
                                          :fcss/docstring     docstring})))))
              #(assoc %
                      sym
@@ -1261,17 +1241,16 @@
           target
           `(def ~(-assoc-docstring sym
                                    docstring)
-                ~(case target
-                   :cljs/dev    `(let [raw# ~raw]
-                                   (.set -registry
-                                         raw#
-                                         ~(f-templated raw
-                                                       option+))
-                                   raw#)
-                   :cljs/release raw
-                   :clojure      `(->DualName ~raw
-                                              ~(f-templated raw
-                                                            option+))))
+                ~(if (identical? target
+                                 :cljs/release)
+                   raw
+                   `(let [raw# ~raw]
+                      (swap! -registry
+                             assoc
+                             raw#
+                             ~(f-templated raw
+                                           option+))
+                      raw#)))
           rule+))))
 
 
@@ -1394,7 +1373,7 @@
 
    ```clojure
    (defvar my-var
-           :fallback 0)
+           :fallback (garden.units/px 42))
    ```"
 
   {:arglists '([sym docstring? & option+])}
@@ -1410,9 +1389,11 @@
                 (fn [raw option+]
                   (let [{:keys [fallback]} option+]
                     (if fallback
-                      `(templ "var($name, $fallback)"
-                              {:fallback ~fallback
-                               :name     ~raw})
+                      `(str "var("
+                            ~raw
+                            ", "
+                            (templ ~fallback)
+                            ")")
                       (format "var(%s)"
                               raw)))))))
 

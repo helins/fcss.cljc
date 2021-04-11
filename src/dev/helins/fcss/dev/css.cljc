@@ -71,8 +71,8 @@
   :fallback (css.unit/px 42)
 
   ["test"
-   {length 'green
-    :color length}])
+   {length "101px"
+    :left  [length]}])
  
  
 
@@ -85,13 +85,14 @@
 
   ["&"
    "body"
-   {:background bg
-    :left       (fcss/templ "calc(1px * var(&, 42))"
-                            (str length))
+   {:background [bg]
+    :left       ["calc(1 * &)"
+                 (fcss/fallback length
+                                "100%")]
     :top        (css.unit/percent 50)
-    :width      length
+    :width      [length]
     bg          fcss.dev.css-2/color
-    length      50}])
+    length      "50px"}])
 
 
 
