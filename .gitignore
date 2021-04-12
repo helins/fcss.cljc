@@ -29,8 +29,8 @@ package.json
 
 // CLJS dev environment
 
-/cljs/*
-!/cljs/index.html
+/cljs/*/*
+!/cljs/dev/index.html
 
 
 // Project specific

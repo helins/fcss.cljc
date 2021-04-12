@@ -1139,7 +1139,7 @@
                                          :fcss/docstring     docstring})))))
              #(assoc %
                      sym
-                     rule-new+))))))
+                     rule-new-2+))))))
 
 
 
@@ -1794,7 +1794,9 @@
 ;;;;;;;;;; Deleting ununsed <link> nodes during dev
 
 
-#?(:cljs (defn ^:dev/after-load ^:no-doc -after-load
+#?(:cljs (medium/when-target* :cljs/dev
+
+  (defn ^:dev/after-load ^:no-doc -after-load
 
     ;; Lifecycle hook for Shadow-CLJS which deletes <link> nodes referencing removed CSS files.
     ;;
@@ -1815,4 +1817,4 @@
                                              def-cycle
                                              (fn [_nspace _sym css-id]
                                                (some-> (js/document.getElementById css-id)
-                                                       .remove)))))))))
+                                                       .remove))))))))))

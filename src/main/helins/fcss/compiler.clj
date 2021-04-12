@@ -26,7 +26,11 @@
   
    Attention, becomes altered to true when in release mode."
 
-  true)
+  (let [env (System/getenv "HELINS_FCSS_DEV")]
+    (if env
+      (= env
+         "true")
+      true)))
 
 
 
@@ -69,7 +73,7 @@
 
   "A tagged CSS item, such as a class, begins with this string."
 
-  "<<<_FCSS_")
+  "___FCSS-")
 
 
 
@@ -77,7 +81,7 @@
 
   "A tagged CSS item, such as a class, ends with this string."
 
-  "_FCSS_>>>")
+  "-FCSS___")
 
 
 ;;;;; Regexes for finding different kinds of tagged strings
@@ -545,14 +549,14 @@
   (let [v*ctx    (volatile! ctx)
         output-2 (clojure.string/replace output
                                          regex-tagged
-                                         (fn [magic-name]
-                                           (if (css-var? magic-name)
+                                         (fn [tagged]
+                                           (if (css-var? tagged)
                                              (or (get var->munged
-                                                      magic-name)
-                                                 (str magic-name
+                                                      tagged)
+                                                 (str tagged
                                                       "__DEAD"))
                                              (let [path-munged [:class->munged
-                                                                magic-name]]
+                                                                tagged]]
                                                (get-in (vswap! v*ctx
                                                                (fn [ctx-2]
                                                                  (cond->
@@ -565,7 +569,7 @@
                                                                            (assoc :seed
                                                                                   seed-2)
                                                                            (assoc-in [:class->munged
-                                                                                      magic-name]
+                                                                                      tagged]
                                                                                      (str prefix
                                                                                           seed-2))))))))
                                                        path-munged)))))]
@@ -574,6 +578,23 @@
            output-2)))
 
 ;;;;;;;;;; IO
+
+
+(defn file!
+
+  "Makes a File object out of a string `path` and ensures its parent directory exist.
+  
+   Needed prior to writing such a file."
+
+  ^File
+
+  [path]
+
+  (let [file (File. path)]
+    (some-> (.getParentFile file)
+            .mkdirs)
+    file))
+
 
 
 (defn open-file+
@@ -610,33 +631,17 @@
                         var->munged]}]
   
   (run! (fn [[path {:keys [content]}]]
-          (spit path
+          (spit (file! (str "fcss/optimized/corpus/"
+                            path))
                 (clojure.string/replace content
                                         regex-tagged
-                                        (fn [magic-name]
-                                          (or ((if (css-var? magic-name)
+                                        (fn [tagged]
+                                          (or ((if (css-var? tagged)
                                                  var->munged
                                                  class->munged)
-                                               magic-name)
+                                               tagged)
                                               "")))))
         opened-file+))
-
-
-
-(defn file!
-
-  "Makes a File object out of a string `path` and ensures its parent directory exist.
-  
-   Needed prior to writing such a file."
-
-  ^File
-
-  [path]
-
-  (let [file (File. path)]
-    (some-> (.getParentFile file)
-            .mkdirs)
-    file))
 
 
 ;;;;;;;;;; Centralizing previous optimizing steps
@@ -686,9 +691,9 @@
 
   {:fcss/operation   :release
    :fcss/prefix      "_-_"
-   :fcss.path/cljs+  ["resources/public/js/main.js"]
-   :fcss.path/output "resources/css/main.css"
-   :fcss.path/report "resources/report/fcss.edn"})
+   :fcss.path/cljs+  ["cljs/advanced/js/main.js"]
+   :fcss.path/output "fcss/optimized/main.css"
+   :fcss.path/report "fcss/optimized/report.edn"})
 
 
 
@@ -707,10 +712,10 @@
          path-output :fcss.path/output} (merge main-default
                                                arg+)]
     (require ns-entry
-             :reload-all)
-    (let [rule+  (vec (apply concat
-                             (mapcat vals
-                                     (vals @*rule+))))
+             :reload)
+    (let [rule+  (into []
+                       (mapcat second)
+                       @*rule+)
           ctx    (merge arg-2+
                         {:fcss.rule/initial+ rule+
                          :rule+              rule+})

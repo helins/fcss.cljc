@@ -72,7 +72,7 @@
 
   ["test"
    {length "101px"
-    :left  [length]}])
+    :left  length}])
  
  
 
@@ -85,12 +85,12 @@
 
   ["&"
    "body"
-   {:background [bg]
+   {:background bg
     :left       ["calc(1 * &)"
                  (fcss/fallback length
                                 (css.unit/percent 100))]
     :top        (css.unit/percent 50)
-    :width      [length]
+    :width      length
     bg          fcss.dev.css-2/color
     length      "51px"}])
 

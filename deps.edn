@@ -30,7 +30,7 @@
   :kaocha
   {:extra-deps {lambdaisland/kaocha {:mvn/version "1.0.829"}}}
 
-  :run-compiler
+  :run-optimizer
   {:exec-args   {:fcss/entry helins.fcss.dev.css}
    :exec-fn     helins.fcss.compiler/main
    :extra-paths ["src/dev"]}

@@ -21,7 +21,10 @@
 (def color 'green)
 
 
-(fcss/defclass klass-2)
+(fcss/defclass klass-2
+
+  [klass-2
+   {:background :pink}])
 
 
 (fcss/defany my-rule
