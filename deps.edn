@@ -15,6 +15,12 @@
                  "src/test"]
    :extra-deps {org.clojure/test.check {:mvn/version "0.10.0"}}}
 
+  :fcss-optimizer
+  {:exec-args   {:fcss/entry       helins.fcss.dev.css
+                 :fcss.path/corpus ["cljs/release/js/main.js"]}
+   :exec-fn     helins.fcss.compiler/main
+   :extra-paths ["src/dev"]}
+
   :jar
   {:exec-args    {:jar      "compiled/jvm/release.jar"
                   :sync-pom true}
@@ -29,11 +35,6 @@
 
   :kaocha
   {:extra-deps {lambdaisland/kaocha {:mvn/version "1.0.829"}}}
-
-  :run-optimizer
-  {:exec-args   {:fcss/entry helins.fcss.dev.css}
-   :exec-fn     helins.fcss.compiler/main
-   :extra-paths ["src/dev"]}
 
   :test
   {:extra-paths ["src/test"]}}

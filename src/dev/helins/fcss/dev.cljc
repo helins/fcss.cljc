@@ -9,8 +9,7 @@
 
   {:author "Adam Helinski"}
 
-  (:require [garden.core         :as garden]
-            [helins.fcss]
+  (:require [helins.fcss]
             [helins.fcss.dev.css :as fcss.dev.css]))
 
 

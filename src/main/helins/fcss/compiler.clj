@@ -667,10 +667,13 @@
    Used by [[main]]."
 
   [{:as             ctx
-    :fcss.path/keys [cljs+
+    :fcss.path/keys [corpus
                      report]}]
 
-  (let [opened-file+              (open-file+ cljs+)
+  (when-not corpus
+    (println "No corpus specified under :fcss.path/corpus")
+    (System/exit 1))
+  (let [opened-file+              (open-file+ corpus)
         {:as   ctx-2
          :keys [original->munged+
                 rule+]}           (-> (atomize-rule+ (assoc ctx
@@ -704,7 +707,6 @@
 
   {:fcss/operation   :release
    :fcss/prefix      "_-_"
-   :fcss.path/cljs+  ["cljs/release/js/main.js"]
    :fcss.path/output "fcss/optimized/main.css"
    :fcss.path/report "fcss/optimized/report.edn"})
 
