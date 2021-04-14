@@ -1137,9 +1137,10 @@
                                         {:fcss/compile-cycle (or (coload/compile-cycle)
                                                                  0)
                                          :fcss/docstring     docstring})))))
-             #(assoc %
-                     sym
-                     rule-new-2+))))))
+             #(assoc-in %
+                        [nspace
+                         nme]
+                        rule-new-2+))))))
 
 
 

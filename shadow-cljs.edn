@@ -1,16 +1,16 @@
 {:builds
- {:advanced
-  {:asset-path  "/js"
-   :modules     {:main {:entries [helins.fcss.dev]
-                        :init-fn helins.fcss.dev/main}}
-   :output-dir  "cljs/advanced/js"
-   :target      :browser}
-
-  :dev
+ {:dev
   {:asset-path  "/js"
    :build-hooks [(helins.coload/hook {helins.fcss/coload {:src ["src/dev"]}})]
    :modules     {:main {:entries [helins.fcss.dev]}}
    :output-dir  "cljs/dev/js"
+   :target      :browser}
+
+  :release
+  {:asset-path  "/js"
+   :modules     {:main {:entries [helins.fcss.dev]
+                        :init-fn helins.fcss.dev/main}}
+   :output-dir  "cljs/release/js"
    :target      :browser}
 
  :test-node

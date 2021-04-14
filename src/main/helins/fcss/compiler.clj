@@ -66,6 +66,19 @@
   (atom {}))
 
 
+
+(defn flat-rule+
+
+  "Flatten result for [[*rule+]] to a vector of rules."
+
+  [rule+]
+
+  (into []
+        (comp (mapcat vals)
+              (mapcat identity))
+        (vals rule+)))
+
+
 ;;;;;;;;;; Tagging strings and working with them
 
 
@@ -691,7 +704,7 @@
 
   {:fcss/operation   :release
    :fcss/prefix      "_-_"
-   :fcss.path/cljs+  ["cljs/advanced/js/main.js"]
+   :fcss.path/cljs+  ["cljs/release/js/main.js"]
    :fcss.path/output "fcss/optimized/main.css"
    :fcss.path/report "fcss/optimized/report.edn"})
 
@@ -713,13 +726,11 @@
                                                arg+)]
     (require ns-entry
              :reload)
-    (let [rule+  (into []
-                       (mapcat second)
-                       @*rule+)
-          ctx    (merge arg-2+
-                        {:fcss.rule/initial+ rule+
-                         :rule+              rule+})
-          ctx-2  (process! ctx)]
+    (let [rule+ (flat-rule+ @*rule+) 
+          ctx   (merge arg-2+
+                       {:fcss.rule/initial+ rule+
+                        :rule+              rule+})
+          ctx-2 (process! ctx)]
       (spit (file! path-output)
             (ctx-2 :output))
       ctx-2)))
