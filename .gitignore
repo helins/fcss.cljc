@@ -37,7 +37,8 @@ package.json
 
 fcss/*
 .clj-kondo/*
-!.clj-kondo/config.edn
+!.clj-kondo/export
+
 
 
 /private

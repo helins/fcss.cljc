@@ -1259,8 +1259,6 @@
         target    (medium/target env)
         raw       (f-raw (namespaced-string target
                                             sym))]
-    (println :NAME  (namespaced-string target
-                                            sym) :raw raw)
     (-defrul sym
              target
              `(def ~(-assoc-docstring sym

@@ -1,4 +1,0 @@
-#!/usr/bin/env sh
-
-
-env FCSS_MODE=:release clj -M:cljs:dev release release
