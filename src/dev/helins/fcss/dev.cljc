@@ -9,8 +9,9 @@
 
   {:author "Adam Helinski"}
 
-  (:require [helins.fcss]
-            [helins.fcss.dev.css :as fcss.dev.css]))
+  (:require [helins.fcss         :as fcss]
+            [helins.fcss.dev.css :as fcss.dev.css]
+            [helins.fcss.mode    :as fcss.mode]))
 
 
 ;;;;;;;;;;

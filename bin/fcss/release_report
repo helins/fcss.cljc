@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 
 
-env HELINS_FCSS_DEV=false clj -M:cljs:dev run shadow.cljs.build-report release fcss/optimized/shadow_report.html
+env FCSS_MODE=:release  -M:cljs:dev run shadow.cljs.build-report release fcss/optimized/shadow_report.html

@@ -22,6 +22,7 @@
             #?(:clj [helins.coload        :as coload])
             [helins.medium                :as medium]
             #?(:clj [helins.fcss.compiler :as fcss.compiler])
+            #?(:clj [helins.fcss.mode     :as fcss.mode])
             #?(:clj [taoensso.timbre      :as log]))
   #?(:cljs (:require-macros [helins.fcss :refer [defclass
                                                  defdata
@@ -643,13 +644,14 @@
                          'ok))
    ```"
 
-  ([sym]
+  ([target sym]
 
-   (namespaced-string nil
+   (namespaced-string target
+                      nil
                       sym))
 
 
-  ([nmspace unqualified-sym]
+  ([target nmspace unqualified-sym]
 
    (let [string (str (clojure.string/replace (str (or nmspace
                                                       *ns*))
@@ -659,11 +661,11 @@
                      (clojure.string/replace (str unqualified-sym)
                                              #"\+$"
                                              "s"))]
-     (if fcss.compiler/dev?
-       string
-       (str fcss.compiler/tag-begin
-            string
-            fcss.compiler/tag-end))))))
+     (case (fcss.mode/current target)
+       :dev     string
+       :release (str fcss.compiler/tag-begin
+                     string
+                     fcss.compiler/tag-end))))))
 
 
 
@@ -676,7 +678,8 @@
   [sym]
 
   (medium/not-cljs-release*)
-  (namespaced-string sym)))
+  (namespaced-string (medium/target &env)
+                     sym)))
 
 
 ;;;;;;;;;; Templating - Private
@@ -883,7 +886,7 @@
   ;; Also inspects CSS properties and warns about a possible typo when they are
   ;; unknown.
 
-  [var-def decl+]
+  [target var-def decl+]
 
   (reduce-kv (fn [decl-2+ property value]
                (assoc decl-2+
@@ -904,11 +907,11 @@
                         (apply templ
                                value)
                         (templ value))))
-              (if fcss.compiler/dev?
-                (sorted-map-by (fn [k-1 k-2]
-                                 (compare (-str-property k-1)
-                                          (-str-property k-2))))
-                {})
+             (case (fcss.mode/current target)
+               :dev     (sorted-map-by (fn [k-1 k-2]
+                                         (compare (-str-property k-1)
+                                                  (-str-property k-2))))
+               :release {})
              decl+)))
 
 
@@ -923,7 +926,7 @@
   ;;
   ;; Used by [[-prepare-at-rule]].
 
-  [var-def at-rule]
+  [target var-def at-rule]
 
   (update-in at-rule
              [:value
@@ -931,7 +934,8 @@
              (fn [frame+]
                (mapv (fn [[step decl+]]
                        [step
-                        (-templ-decl+ var-def
+                        (-templ-decl+ target
+                                      var-def
                                       decl+)])
                      frame+)))))
 
@@ -943,7 +947,7 @@
   ;;
   ;; Used by [[-prepare-at-rule]].
 
-  [var-def at-rule]
+  [target var-def at-rule]
 
   ;; For some reason, Garden needs rules to remain in a list (specifically).
   ;; A vector will result in the declarations not being rendered.
@@ -952,7 +956,8 @@
              [:value
               :rules]
              (fn [rule+]
-               (list* (-prepare-rule+ var-def
+               (list* (-prepare-rule+ target
+                                      var-def
                                       rule+))))))
 
 
@@ -965,17 +970,18 @@
   ;;
   ;; Used by [[-prepare-rule+]].
 
-  [var-def {:as   at-rule
-            :keys [identifier]}]
+  [target var-def {:as   at-rule
+                   :keys [identifier]}]
 
-  (case identifier
-    :keyframes (-prepare-anim var-def
-                              at-rule)
-    :media     (-prepare-at-generic var-def
-                                    at-rule)
-    :feature   (-prepare-at-generic var-def
-                                    at-rule)
-    :else      at-rule)))
+  (if-some [f (case identifier
+                :keyframes -prepare-anim
+                :media     -prepare-at-generic
+                :feature   -prepare-at-generic 
+                nil)]
+    (f target
+       var-def
+       at-rule)
+    at-rule)))
 
 
 
@@ -988,20 +994,22 @@
   ;;
   ;; Used by [[-prepare-rule+]].
 
-  [var-def rule]
+  [target var-def rule]
 
   (case (count rule)
     2 (let [[templatable
              decl+]      rule]
         [(templ templatable)
-         (-templ-decl+ var-def
+         (-templ-decl+ target
+                       var-def
                        decl+)])
     3 (let [[template
              placeholder->templatable
              decl+]                   rule]
         [(templ template
                 placeholder->templatable)
-         (-templ-decl+ var-def
+         (-templ-decl+ target
+                       var-def
                        decl+)]))))
 
 
@@ -1015,25 +1023,29 @@
   ;; rules to the global registry.
 
 
-  ([var-def rule+]
+  ([target var-def rule+]
 
-   (-prepare-rule+ var-def
+   (-prepare-rule+ target
+                   var-def
                    rule+
                    []))
 
 
-  ([var-def rule+ acc]
+  ([target var-def rule+ acc]
 
    (reduce (fn [acc-2 rul]
              (if (seq? rul)
-               (-prepare-rule+ var-def
+               (-prepare-rule+ target
+                               var-def
                                rul
                                acc-2)
                (conj acc-2
                      (cond
-                       (vector? rul)              (-prepare-vector-rule var-def
+                       (vector? rul)              (-prepare-vector-rule target
+                                                                        var-def
                                                                         rul)
-                       (garden.util/at-rule? rul) (-prepare-at-rule var-def
+                       (garden.util/at-rule? rul) (-prepare-at-rule target
+                                                                    var-def
                                                                     rul)
                        :else                      (throw (ex-info "CSS rule format not supported"
                                                                   {:fcss.error/namespace (ns-name *ns*)
@@ -1101,46 +1113,47 @@
   ;; and only does an update if this is true.
   ;; This prevents unnecessary CSS recompilation and subsequent IO.
 
-  [var-def rule-new+]
+  [target var-def rule-new+]
 
   (swap! fcss.compiler/*rule+
          (let [docstring   (-> var-def
                                meta
                                :doc)
-               rule-new-2+ (-prepare-rule+ var-def
+               rule-new-2+ (-prepare-rule+ target
+                                           var-def
                                            rule-new+)
                sym         (symbol var-def)
                nspace      (symbol (namespace sym))
                nme         (symbol (name sym))]
-           (if fcss.compiler/dev?
-             (fn [state]
-               (let [rule-old+ (get-in state
-                                       [nspace
-                                        nme])]
-                 (cond->
-                   (vary-meta state
-                              update-in
-                              [:def-cycle
-                               nspace]
-                              (fnil conj
-                                    #{})
-                              nme)
-                   (or (not= rule-new-2+
-                             rule-old+)
-                       (not= docstring
-                             (-> rule-old+
-                                 meta
-                                 :fcss/docstring)))
-                   (assoc-in [nspace
-                              nme]
-                             (with-meta rule-new-2+
-                                        {:fcss/compile-cycle (or (coload/compile-cycle)
-                                                                 0)
-                                         :fcss/docstring     docstring})))))
-             #(assoc-in %
-                        [nspace
-                         nme]
-                        rule-new-2+))))))
+           (case (fcss.mode/current target)
+             :dev     (fn [state]
+                        (let [rule-old+ (get-in state
+                                                [nspace
+                                                 nme])]
+                          (cond->
+                            (vary-meta state
+                                       update-in
+                                       [:def-cycle
+                                        nspace]
+                                       (fnil conj
+                                             #{})
+                                       nme)
+                            (or (not= rule-new-2+
+                                      rule-old+)
+                                (not= docstring
+                                      (-> rule-old+
+                                          meta
+                                          :fcss/docstring)))
+                            (assoc-in [nspace
+                                       nme]
+                                      (with-meta rule-new-2+
+                                                 {:fcss/compile-cycle (or (coload/compile-cycle)
+                                                                          0)
+                                                  :fcss/docstring     docstring})))))
+             :release #(assoc-in %
+                                 [nspace
+                                  nme]
+                                 rule-new-2+))))))
 
 
 
@@ -1162,7 +1175,8 @@
                          (-ensure-link-node (quote ~(ns-name *ns*))
                                             (quote ~sym))))
       :cljs/release form-def
-      :clojure      `(-add-rule+! ~form-def
+      :clojure      `(-add-rule+! ~target
+                                  ~form-def
                                   ~(vec rule+)))
     form-def)))
 
@@ -1242,8 +1256,11 @@
                       [option+
                        nil]))
 
-        raw       (f-raw (namespaced-string sym))
-        target    (medium/target env)]
+        target    (medium/target env)
+        raw       (f-raw (namespaced-string target
+                                            sym))]
+    (println :NAME  (namespaced-string target
+                                            sym) :raw raw)
     (-defrul sym
              target
              `(def ~(-assoc-docstring sym
@@ -1316,14 +1333,16 @@
 
   [sym & arg+]
 
-  (let [docstring (-docstring arg+)]
+  (let [docstring (-docstring arg+)
+        target    (medium/target &env)]
     (-defrul sym
-             (medium/target &env)
+             target
              `(def ~(-assoc-docstring sym
                                       docstring)
 
                 ~(str "data-"
-                      (namespaced-string sym)))
+                      (namespaced-string target
+                                         sym)))
              (cond->
                arg+
                docstring
@@ -1367,7 +1386,8 @@
   `(def ~(-assoc-docstring sym
                            docstring)
 
-     ~(namespaced-string sym))))
+     ~(namespaced-string (medium/target &env)
+                         sym))))
 
 
 
@@ -1457,7 +1477,8 @@
   (let [target (medium/target &env)]
     (when-not (identical? target
                           :cljs/release)
-      (let [css-name  (namespaced-string sym)
+      (let [css-name  (namespaced-string target
+                                         sym)
             docstring (-docstring arg+)]
         (-defrul sym
                  (medium/target &env)

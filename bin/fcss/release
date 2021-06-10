@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 
 
-env HELINS_FCSS_DEV=false clj -M:cljs:dev release release
+env FCSS_MODE=:release clj -M:cljs:dev release release

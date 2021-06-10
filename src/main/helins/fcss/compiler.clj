@@ -13,6 +13,7 @@
             [garden.core      :as garden]
             [garden.compiler]
             [helins.coload    :as coload]
+            [helins.fcss.mode :as fcss.mode]
             [taoensso.timbre  :as log])
   (:import java.io.File))
 
@@ -716,12 +717,11 @@
 
   "Entry point to optimizing compiler.
   
-   Attention, alters the var root [[dev?]] to false."
+   Attention, set mode to `:release`. See [[helins.fcss.mode/switch!]]."
 
   [arg+]
 
-  (alter-var-root #'dev?
-                  (constantly false))
+  (fcss.mode/switch! :release)
   (let [{:as         arg-2+
          ns-entry    :fcss/entry
          path-output :fcss.path/output} (merge main-default
