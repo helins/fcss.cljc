@@ -5,8 +5,6 @@
 
 (ns helins.fcss.clj-kondo
 
-  ""
-
   {:author "Adam Helinski"}
 
   (:require [clj-kondo.hooks-api :as hook]))
@@ -17,7 +15,7 @@
 
 (defn def*
 
-  ""
+  ;; TODO. Adapt for variables with fallback.
 
   [{:keys [node]}]
 

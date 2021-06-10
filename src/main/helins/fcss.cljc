@@ -14,6 +14,15 @@
 
    See README."
 
+  ;; This namespace is notoriously hard to follow. As usual, having reader conditionals does not help.
+  ;;
+  ;; Furthermore, the core idea of FCSS is loading a CLJC namespace both in Clojure and in Clojurescript
+  ;; at the same time, like having 2 universes, one being the mirror of the other. It means thinking about
+  ;; how those two universes exist and interact together. Implementation is based on the Coload library.
+  ;;
+  ;; Even further, besides the usual distinction between Clojure and CLJS, there is a distinction between
+  ;; CLJS in developemnt mode and CLJS in release mode (advanced compilation).
+
   (:require [clojure.string]
             #?(:clj [garden.color])
             #?(:clj [garden.compiler])
@@ -606,7 +615,7 @@
 
 #?(:clj (defn- -assoc-docstring
 
-  ;; Adds a docstring to a symbol meant to be interned.
+  ;; Adds a docstring to a symbol meant to be interned. Used in macros that define some CSS stuff.
 
   [sym docstring]
 
@@ -673,7 +682,7 @@
 
   "Macro for [[namespaced-string]].
   
-   Meant for development, throws when used in CLJS release source."
+   Meant for development, throws during compilation when used in CLJS release source."
 
   [sym]
 
@@ -770,7 +779,7 @@
 
     "Things defined using `def...` macros from this namespace usually have two representations.
    
-     - One meant for code (eg. CSS class used in a component, such as \"my-class\")
+     - One meant for code (eg. CSS class name passed to DOM element, such as \"my-class\")
      - One meant for CSS rules (eg. \".my-class\")
 
      This function serves to \"template\" that second representation.
@@ -784,7 +793,7 @@
 
      This function relies on the protocol function [[-templ]] which is implemented by default for:
 
-       - Things returned by `def...` functions from this namespace
+       - Things returned by `def...` macros from this namespace
        - Number
        - String
        - Object (pass through `str`)
@@ -800,24 +809,31 @@
 
      Hence, it can be used to template strings and notably, CSS rule identifiers with placeholders.
 
-     A placeholder is a substring prefixed with `$`. If there is only one, then `&` alone can be used
-     such as: 
+     A placeholder is a substring prefixed with `$`. It resolves to a keyword or a numbe in the provided
+     map:
 
      ```clojure
-     (= (templ \"$my-class > p\"
-               {:my-class my-class})
+     (templ \"$x > p\"
+            {:x my-class})
 
-        (templ \"$1 > p\"
-               {1 my-class})
 
-        (templ \"& > p\"
-               my-class))
+     (templ \"$1 > $x\"
+            {1  my-class
+             :x another-class})
+     ```
+
+     As a shortcut, when there is only one placeholder, `&` can be used alone without providing a map:
+
+     ```clojure
+      (templ \"& > p\"
+             my-class))
      ```
 
      It allows for writing complex CSS selectors.
 
      The templating itself is not particularly fast. It is meant for development and writing rules.
-     In Clojurescript, usage is forbidden outside development and rules (compilation will throw)."
+     In Clojurescript, usage is forbidden outside development and rules (compilation will throw). This
+     ban avoids importing the Garden library unnecessarily."
 
     ([templatable]
 
@@ -1428,7 +1444,7 @@
 
 #?(:clj (defn- -flatten-on-seq
 
-  ;; A flatten a collection for each element that passes `seq?`.
+  ;; Flatten a collection for each element that passes `seq?`.
 
 
   ([coll]
@@ -1452,7 +1468,7 @@
 
 #?(:clj (defn ^:no-doc -anim
 
-  ""
+  ;; Creates an animation (Garden keyframes).
 
   [css-name frame+]
 
@@ -1497,7 +1513,7 @@
 
   "Meant for the REPL.
   
-   Either from Clojure from Clojurescript, retrieves one or several defined CSS rules.
+   Either from Clojure or CLJS, retrieves one or several defined CSS rules.
   
    No arguments will return the whole map of `namespace` -> (`name` -> `rules`).
   
@@ -1539,7 +1555,7 @@
 
 #?(:clj (defprotocol IInterpolate
   
-  "Defines only one function types can implement for doing CSS interpolation."
+  "Defines only one function that types can implement for doing CSS interpolation."
   
   (interpolate [from to css-var]
   
@@ -1702,7 +1718,7 @@
           (templ fallback-value))))
 
 
-;;;;;;;;;; Plugin for Medium hook - Private
+;;;;;;;;;; Plugin for Coload hook - Private
 
 
 (defn- -def-cycle
