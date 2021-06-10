@@ -5,7 +5,7 @@
 
 (ns helins.fcss.compiler
 
-  ""
+  "Compiling and optimizing rules."
 
   (:require [clojure.java.io]
             [clojure.pprint]
@@ -15,24 +15,10 @@
             [helins.coload    :as coload]
             [helins.fcss.mode :as fcss.mode]
             [taoensso.timbre  :as log])
-  (:import java.io.File))
+  (:import (java.io File)))
 
 
 ;;;;;;;;;;
-
-
-(def dev?
-
-  "Is the environment set to dev mode?
-  
-   Attention, becomes altered to true when in release mode."
-
-  (let [env (System/getenv "HELINS_FCSS_DEV")]
-    (if env
-      (= env
-         "true")
-      true)))
-
 
 
 (def ^String dev-root
@@ -164,7 +150,7 @@
 
 (defn compile-dev
 
-  ""
+  "Compiles and outputs a CSS dev file for the rules under the given symbol."
 
   
   ([unqualified-sym]
@@ -247,7 +233,7 @@
    Atomization happens only for CSS selectors consisting of only a tagged CSS class and nothing else.
 
    Tagged classes that are not found in `detected-name+` are simply eliminated, resulting in dead CSS
-   elimination.
+   elimination (also see [[detect-tag+]]).
 
    This function updates the given context with those keys:
 
@@ -321,7 +307,7 @@
 
   "Must be called after [[atomize-rule+]].
   
-   Inverses `decl->class+` by assoc'ing to the given `ctx`, at `:class+->style`,
+   Inverses `decl->class+` by associating to the given `ctx`, at `:class+->style`,
    a map of `set of CSS classes` -> `CSS style` (regrouped declarations).
 
    This computes groups of classes that shares exactly or partly the same style."
@@ -398,27 +384,6 @@
 
 
 
-(defn- -process-complex
-
-  ""
-
-  [ctx class-name class-name-munged rule-complex+]
-
-  (-> ctx
-      (update :class->rule-complex+
-              dissoc
-              class-name)
-      (update :rule+
-              into
-              (map (fn [[str-selector style]]
-                     [(clojure.string/replace str-selector
-                                              class-name
-                                              class-name-munged)
-                      style]))
-              rule-complex+)))
-
-
-
 (defn ensure-unique
 
   "Ensures that each CSS class has a munged named referring only to that class.
@@ -457,7 +422,7 @@
    Processes complex CSS rules (described in [[atomize-rule+]]) and adds them
    to the `ctx` under `:rule+`.
   
-   The `:rule-complex+` key is dissoc'ed."
+   The `:rule-complex+` key is dissociated."
 
   [{:as   ctx
     :keys [rule-complex+]}]
@@ -491,7 +456,7 @@
 
   "Must be called after [[rule-complex+]].
 
-   In `ctx`, under `:class->munged`, assoc'es a map of `CSS class` -> `string
+   In `ctx`, under `:class->munged`, associates a map of `CSS class` -> `string
    gathering all related munged names`."
 
   [{:as   ctx
@@ -509,7 +474,7 @@
 
 (defn munge-var+
 
-  "Akin to [[munge-class+]], munges the given CSS vars and assoc'es them
+  "Akin to [[munge-class+]], munges the given CSS vars and assocaites them
    in the `ctx` under `:var->munged`."
 
   [ctx var+]
@@ -535,7 +500,7 @@
 
   "Must be called after [[class-join-munged]].
   
-   After all that work, compiles all surviving rules to CSS and assoc'es them
+   After all that work, compiles all surviving rules to CSS and associates them
    in `ctx` undex `:output`."
 
   [{:as   ctx
@@ -602,7 +567,7 @@
 
   ^File
 
-  [path]
+  [^String path]
 
   (let [file (File. path)]
     (some-> (.getParentFile file)
